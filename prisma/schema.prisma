@@ -1,0 +1,81 @@
+// Shared starting schema from Readme.md. No migrations or seed data yet.
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum BookingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model User {
+  id               String    @id @default(cuid())
+  name             String
+  email            String    @unique
+  passwordHash     String
+  department       String?
+  role             Role      @default(USER)
+  createdAt        DateTime  @default(now())
+  bookings         Booking[] @relation("BookingUser")
+  reviewedBookings Booking[] @relation("BookingReviewer")
+}
+
+model Room {
+  id        String          @id @default(cuid())
+  name      String
+  location  String
+  capacity  Int
+  imageUrl  String?
+  isActive  Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  equipment RoomEquipment[]
+  bookings  Booking[]
+}
+
+model Equipment {
+  id    String          @id @default(cuid())
+  name  String          @unique
+  rooms RoomEquipment[]
+}
+
+model RoomEquipment {
+  roomId      String
+  equipmentId String
+  room        Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  @@id([roomId, equipmentId])
+}
+
+model Booking {
+  id            String        @id @default(cuid())
+  roomId        String
+  userId        String
+  topic         String
+  startTime     DateTime
+  endTime       DateTime
+  attendeeCount Int
+  status        BookingStatus @default(PENDING)
+  adminNote     String?
+  reviewedById  String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  room       Room  @relation(fields: [roomId], references: [id])
+  user       User  @relation("BookingUser", fields: [userId], references: [id])
+  reviewedBy User? @relation("BookingReviewer", fields: [reviewedById], references: [id])
+
+  @@index([roomId, startTime, endTime])
+}
