@@ -1,3 +1,103 @@
+# Meeting Room Booking — Basecode
+
+โครงสร้างเริ่มต้นสำหรับสมาชิกแยก branch ไปพัฒนา ตาม proposal ด้านล่าง
+
+## เริ่มใช้งาน
+
+ใช้ Node.js 24.x และ npm (ดู `.nvmrc`) รันจาก root ของ repository:
+
+```sh
+npm ci
+npm run dev
+```
+
+เปิด `http://localhost:3000` ได้ทันที หน้า placeholder ไม่ต้องใช้ PostgreSQL หรือ `.env` และ `npm ci` จะ generate Prisma Client ให้แล้ว
+
+เมื่อต้องเริ่มงานฐานข้อมูล ให้คัดลอก `.env.example` เป็น `.env` แล้วแก้ `DATABASE_URL` ให้ตรง PostgreSQL ของตนเอง:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+```sh
+npm run db:validate
+npm run db:generate
+```
+
+ผู้รับผิดชอบฐานข้อมูลสร้าง migration แรกและ exclusion constraint พร้อมกัน ก่อนทีมเริ่มใช้ฐานข้อมูลร่วมกัน ไม่ใช้ `db push` แทน migration เพราะจะไม่ได้ constraint ป้องกันการจองซ้อน
+
+```sh
+npm run db:migrate -- --name init --create-only
+# Add the exclusion constraint from the proposal to the generated migration.sql.
+npm run db:migrate
+```
+
+ยังไม่มี seed script ให้เพิ่มเมื่อพัฒนา Seed Data แล้ว ห้าม commit `.env`, รหัสผ่านจริง หรือ Prisma Client ที่ generate แล้ว
+
+## สิ่งที่เตรียมไว้
+
+- Next.js App Router + React + TypeScript (strict mode) + Tailwind CSS
+- ESLint, alias `@/*` สำหรับ `src/*`, `.editorconfig`, `.gitignore`, `.env.example`, npm lockfile
+- ทุก page route ใน proposal รวมหน้า Admin แบบ Optional เป็น placeholder เท่านั้น
+- Prisma schema ตาม proposal พร้อม config และ `getPrisma()` ใน `src/lib/prisma.ts` สำหรับเรียกจาก server โดยไม่เปิด connection ตอนโหลดหน้า placeholder
+- Dependencies สำหรับ React Hook Form, Zod, FullCalendar, bcrypt และ Nodemailer พร้อมใช้ใน branch ของแต่ละคน
+
+ยังไม่ได้ทำ UI จริง, AuthContext, session, guards, Server Actions, `GET /api/bookings`, migration, exclusion constraint, seed, อีเมล หรือ logic การจอง หน้า Admin ยังเป็น placeholder เปิดได้ทั่วไป ห้ามใช้กับข้อมูลจริงก่อนเพิ่มการตรวจ session และสิทธิ์บน server
+
+## โครงสร้างสำหรับแบ่งงาน
+
+```text
+prisma/
+  schema.prisma          # Shared models from the proposal
+  migrations/            # Database owner adds migrations and SQL constraint
+public/                  # Static assets
+src/
+  app/                   # Page routes, layout, global CSS
+    api/bookings/        # Reserved for GET /api/bookings (not implemented)
+    admin/               # Optional page placeholders
+  actions/               # Server Actions, grouped by feature
+  components/            # Shared UI; placeholder-page.tsx is temporary
+  context/               # AuthContext implementation goes here
+  lib/
+    prisma.ts            # Server-only Prisma Client getter
+    auth/                # Session and permission helpers
+    email/               # SMTP helpers
+  schemas/               # Shared Zod schemas
+  types/                 # Shared application types and interfaces
+```
+
+โฟลเดอร์ว่างมี `.gitkeep` เพื่อเก็บใน Git ยังไม่ได้ตกลง interface ของ session หรือ Server Actions ให้ทีมตกลงก่อนเขียนฟีเจอร์ตามหัวข้อ 7
+
+## แยก branch ทำงาน
+
+หลังนำ basecode เข้า branch หลักแล้ว ให้แต่ละคน checkout branch หลักล่าสุด แล้วสร้าง branch ของงานตัวเอง เช่น:
+
+```sh
+git switch -c feature/database-auth
+# Other members use feature/rooms-ui or feature/booking-calendar.
+```
+
+- Database / Auth: `prisma/`, `src/lib/auth/`, `src/context/`, `src/schemas/`, `src/types/`, หน้า register/login, API bookings และงาน Admin ที่รับผิดชอบ
+- Frontend / Rooms: layout, shared components, หน้าแรก, profile, rooms และ admin/rooms
+- Booking / Calendar / Email: rooms/[id]/book, calendar, my-bookings, admin/bookings และ src/lib/email
+
+ไฟล์ร่วม เช่น `package.json`, `prisma/schema.prisma`, root layout และ types ควรตกลงก่อนแก้ เพื่อลด merge conflict ใช้ `npm ci` ตาม lockfile เมื่อต้องเพิ่ม package ให้ commit `package.json` และ `package-lock.json` พร้อมกัน
+
+## ตรวจสอบก่อนส่งงาน
+
+```sh
+npm run lint
+npm run typecheck
+npm run db:validate
+npm run build
+```
+
+`npm run build` สร้าง production build และ `npm start` ใช้เปิด build นั้น
+
+ตั้งค่า framework ตาม [Next.js installation](https://nextjs.org/docs/app/getting-started/installation) และ Prisma 7 ใช้ config แยกกับ PostgreSQL adapter ตาม [Prisma 7 guide](https://docs.prisma.io/docs/guides/upgrade-prisma-orm/v7)
+
+---
+
 # Final Project Proposal – ระบบจองห้องประชุมออนไลน์
 
 กลุ่ม: [มหาเทพโฟค] · สมาชิก: [682110161 กันต์ธีร์ วารีสอาด], [682110193 ศรัณย์ กระจ่างแก้ว], [682110169 ณฤกส ปันด้วง]
