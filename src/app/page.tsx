@@ -1,3 +1,5 @@
+// Server Component: static marketing content with no state or effects, so it ships no client JS.
+
 import Link from "next/link";
 import { RoomPlan } from "@/components/ui";
 

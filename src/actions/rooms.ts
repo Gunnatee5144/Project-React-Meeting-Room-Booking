@@ -1,5 +1,8 @@
 "use server";
 
+// Server Actions (mutations): rooms and equipment are written here so the session, admin role
+// and Zod validation are enforced on the server inside a serializable transaction.
+
 import { revalidatePath } from "next/cache";
 import { getRoomViewer } from "@/lib/room-access";
 import { getPrisma } from "@/lib/prisma";

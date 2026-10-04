@@ -1,5 +1,7 @@
 "use client";
 
+// Client Component: Next.js error boundaries must be Client Components (reset() is a browser callback).
+
 import { useEffect } from "react";
 import { EmptyState } from "@/components/ui";
 
