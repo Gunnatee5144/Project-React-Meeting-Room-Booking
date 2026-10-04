@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { IBM_Plex_Sans_Thai } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import Link from "next/link";
 import { Navigation } from "@/components/navigation";
@@ -7,8 +9,9 @@ import { AuthProvider } from "@/context/AuthContext";
 import { getRoomViewer } from "@/lib/room-access";
 
 export const metadata: Metadata = {
-  title: "Meeting Room Booking",
-  description: "ระบบจองห้องประชุมออนไลน์",
+  title: "MEETSYNC · จองห้องประชุม DII CMU",
+  description:
+    "ค้นหาห้องว่าง ดูรายละเอียด และจัดการรายการจองสำหรับบุคลากรและนักศึกษาวิทยาลัยนวัตกรรมดิจิทัล มหาวิทยาลัยเชียงใหม่",
 };
 
 // Server Component: reads the session cookie on the server (getRoomViewer) so the user is
