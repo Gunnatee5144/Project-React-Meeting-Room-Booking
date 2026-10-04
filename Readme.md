@@ -1,4 +1,4 @@
-# Meeting Room Booking — Basecode
+# Meeting Room Booking
 
 โครงสร้างเริ่มต้นสำหรับสมาชิกแยก branch ไปพัฒนา ตาม proposal ด้านล่าง
 
