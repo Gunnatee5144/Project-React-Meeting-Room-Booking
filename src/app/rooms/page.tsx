@@ -1,3 +1,7 @@
+// Server Component using SSR on purpose: results depend on searchParams (date, time, capacity,
+// equipment) and on live PENDING/APPROVED bookings. A cached or prerendered page could show a
+// booked room as free, so force-dynamic keeps every request fresh. No client JS is needed to list rooms.
+
 import Link from "next/link";
 import { PageHeading, EmptyState } from "@/components/ui";
 import { RoomFilterForm } from "@/components/room-filters";

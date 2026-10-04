@@ -1,5 +1,8 @@
 "use client";
 
+// Client Component: needs a confirmation step, pending state and onClick handlers before
+// calling the deleteRoom Server Action.
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { deleteRoom } from "@/actions/rooms";

@@ -1,12 +1,17 @@
 "use client";
 
+// Client Component: highlights the active link (usePathname), toggles the mobile menu
+// (useState) and reads the signed-in user from AuthContext.
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 
 const links = [{ href: "/rooms", label: "ค้นหาห้อง" }, { href: "/calendar", label: "ปฏิทิน" }, { href: "/my-bookings", label: "การจองของฉัน" }];
 
-export function Navigation({ user }: { user: { name: string; role: "USER" | "ADMIN" } | null }) {
+export function Navigation() {
+  const user = useAuth();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const items = user?.role === "ADMIN" ? [...links, { href: "/admin/rooms", label: "จัดการห้อง" }] : links;

@@ -1,5 +1,8 @@
 "use client";
 
+// Client Component: interactive add/delete of equipment with pending state; mutations go
+// through Server Actions and router.refresh() re-renders the server data.
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createEquipment, deleteEquipment } from "@/actions/rooms";

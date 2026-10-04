@@ -1,5 +1,8 @@
 "use server";
 
+// Server Actions (mutations): the account to change comes from the verified session, never from
+// browser input, so one user cannot edit another.
+
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";

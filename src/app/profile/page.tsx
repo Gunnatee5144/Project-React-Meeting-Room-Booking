@@ -1,3 +1,6 @@
+// Server Component: requireRoomViewer() redirects guests on the server and the user data never
+// needs a client fetch. Only ProfileForm is a Client Component.
+
 import { PageHeading } from "@/components/ui";
 import { ProfileForm } from "@/components/profile-form";
 import { requireRoomViewer } from "@/lib/room-access";

@@ -294,3 +294,17 @@ ALTER TABLE "Booking"
 - **[682110161 กันต์ธีร์ วารีสอาด] (Frontend UI & Room Management):** Responsive Layout, เมนูหลักและ Design System หลัก, หน้า `/`, `/profile` พร้อม `updateProfile`, `/rooms` พร้อมตัวกรองค้นหาที่เก็บใน URL, `/rooms/[id]` และงานเสริม `/admin/rooms` พร้อม `createRoom`, `updateRoom`, `deleteRoom`
 - **[682110169 ณฤกส ปันด้วง] (Booking Workflow, Calendar & Email Notifications):** ฟอร์ม `/rooms/[id]/book` พร้อม `createBooking`, FullCalendar (`/calendar`), `/my-bookings` พร้อม `updateBooking`, `cancelBooking` และงานเสริม `/admin/bookings` พร้อม `reviewBooking` และระบบส่งอีเมลแจ้งผลผ่าน Nodemailer / SMTP
 - **ทำร่วมกัน:** ตกลง Type และ Interface ของ Data Layer ตั้งแต่วันแรกเพื่อให้ทำงานขนานกันได้, เชื่อม UI กับ Server Actions, ทดสอบสิทธิ์ User / Admin และกรณีจองเวลาเดียวกันพร้อมกัน, จัดทำเอกสารและเตรียมนำเสนอ
+
+## 8. Checklist ตามเกณฑ์ของอาจารย์
+
+ส่วนที่ทำเสร็จแล้วในงานของ Gun (Frontend UI & Room Management) แต่ละไฟล์มีคอมเมนต์ด้านบนอธิบายเหตุผลของ Server/Client
+
+- [x] **1. Next.js App Router อย่างน้อย 4 route** — Gun ทำเสร็จ 5 route: `/`, `/rooms`, `/rooms/[id]`, `/profile`, `/admin/rooms` (พร้อม `loading.tsx`, `error.tsx`, `not-found.tsx`)
+- [x] **2. มีทั้ง Server และ Client Component พร้อมเหตุผล**
+  - Server Component: `app/page.tsx`, `app/rooms/page.tsx`, `app/rooms/[id]/page.tsx`, `app/profile/page.tsx`, `app/admin/rooms/page.tsx`, `app/layout.tsx` ดึงข้อมูลและตรวจสิทธิ์บน server จึงไม่ส่ง JS ที่ไม่จำเป็นไปที่ browser
+  - Client Component: `navigation.tsx` (เมนูมือถือ, active link), `room-filters.tsx` (ฟอร์มตัวกรองเก็บค่าใน URL), `room-form.tsx` / `profile-form.tsx` (react-hook-form), `delete-room-button.tsx` / `equipment-manager.tsx` (ขั้นตอนยืนยัน, สถานะ pending), `room-image.tsx` (fallback เมื่อรูปโหลดไม่ได้), `context/AuthContext.tsx` และไฟล์ `error.tsx` (error boundary ต้องเป็น Client Component)
+- [x] **3. Data fetching ด้วย SSR โดยเจตนา** — `/rooms` และ `/rooms/[id]` ใช้ `export const dynamic = "force-dynamic"` เพราะผลลัพธ์ขึ้นกับ `searchParams` (วัน เวลา ความจุ อุปกรณ์) และการจองที่เปลี่ยนตลอดเวลา ถ้า cache แบบ SSG/ISR อาจแสดงห้องที่ถูกจองไปแล้วว่าเป็นห้องว่าง ส่วนหน้าแรกไม่มีข้อมูลจาก DB
+  - หมายเหตุ: `app/layout.tsx` อ่านคุกกี้ session ทุก request ทำให้ทุก route render ตอน request ไม่ใช่ตอน build
+- [x] **4. Mutation ผ่าน Server Action** — `actions/rooms.ts` (`createRoom`, `updateRoom`, `deleteRoom`, `createEquipment`, `deleteEquipment`) และ `actions/profile.ts` (`updateProfile`) ตรวจ session, ตรวจ role ใน serializable transaction และ validate ด้วย Zod ซ้ำบน server
+- [x] **5. Global state ฝั่ง client** — `context/AuthContext.tsx` (React Context ตามหัวข้อ 5 ของ proposal) layout ฝั่ง server อ่าน session แล้วส่งให้ `AuthProvider` `Navigation` เรียก `useAuth()` โดยไม่ต้องส่ง props ค่านี้ใช้แสดงผลเท่านั้น Server Action ตรวจสิทธิ์จริงบน server เสมอ (ดู `docs/room-integration.md` สำหรับจุดเชื่อมกับ session ของ Folk)
+- [x] **6. ฟอร์มที่ validate จริง (react-hook-form + zod)** — `profile-form.tsx` กับ `schemas/profile.ts`, `room-form.tsx` กับ `schemas/room.ts` ใช้ `zodResolver` แสดง error รายช่อง และ schema ชุดเดียวกันถูกใช้ตรวจซ้ำใน Server Action

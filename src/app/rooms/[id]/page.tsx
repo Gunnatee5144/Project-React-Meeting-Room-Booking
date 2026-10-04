@@ -1,3 +1,6 @@
+// Server Component using SSR on purpose: the schedule for ?date= changes whenever anyone books,
+// so it must never be served from a static or ISR cache. The query omits user identity and notes.
+
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EmptyState, PageHeading } from "@/components/ui";

@@ -1,5 +1,8 @@
 "use client";
 
+// Client Component: filters live in the URL (shareable, back-button friendly). The form
+// pushes the query string with useRouter and the server page does the actual search.
+
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import Link from "next/link";

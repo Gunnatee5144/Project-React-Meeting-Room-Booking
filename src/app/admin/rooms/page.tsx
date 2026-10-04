@@ -1,3 +1,6 @@
+// Server Component: admin check and data reads happen on the server. Interactive pieces
+// (forms, delete, equipment) are separate Client Components, so only they ship JS.
+
 import Link from "next/link";
 import { EmptyState, PageHeading } from "@/components/ui";
 import { RoomForm } from "@/components/room-form";

@@ -1,5 +1,8 @@
 "use client";
 
+// Client Component: same React Hook Form + Zod pattern as the profile form. Shared roomSchema
+// validates in the browser, and createRoom/updateRoom validate again on the server.
+
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";

@@ -1,5 +1,8 @@
 "use client";
 
+// Client Component: needs onError state to fall back to a placeholder when an admin-supplied
+// image URL fails to load.
+
 import { useState } from "react";
 
 export function RoomImage({ src, name, priority = false }: { src: string | null; name: string; priority?: boolean }) {

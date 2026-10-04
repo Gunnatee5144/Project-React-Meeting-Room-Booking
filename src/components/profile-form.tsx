@@ -1,5 +1,8 @@
 "use client";
 
+// Client Component: React Hook Form + Zod give instant field validation and keep typed
+// input in the browser; the Server Action re-validates because client checks are bypassable.
+
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
