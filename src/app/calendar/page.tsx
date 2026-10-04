@@ -24,6 +24,8 @@ const dateKey = (date: Date) =>
     month: "2-digit",
     day: "2-digit",
   }).format(date);
+// Static labels avoid ICU differences between Node and browser during hydration.
+const weekdays = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."];
 const time = (value: string) =>
   new Date(value).toLocaleTimeString("th-TH", {
     timeZone: "Asia/Bangkok",
@@ -209,7 +211,7 @@ export default function CalendarPage() {
                   className={"calendar-day " + (selected ? "is-active" : "")}
                 >
                   <span>
-                    {date.toLocaleDateString("th-TH", { weekday: "short" })}
+                    {weekdays[new Date(`${dateKey(date)}T00:00:00Z`).getUTCDay()]}
                   </span>
                   <strong>{date.getDate()}</strong>
                   <span

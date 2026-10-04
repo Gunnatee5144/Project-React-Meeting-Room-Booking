@@ -3,10 +3,19 @@ import type { ReactNode } from "react";
 import { IBM_Plex_Sans_Thai } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
-import Link from "next/link";
 import { Navigation } from "@/components/navigation";
 import { AuthProvider } from "@/context/AuthContext";
 import { getRoomViewer } from "@/lib/room-access";
+import { ToastProvider } from "@/context/toast-context";
+import { AppProvider } from "@/context/app-context";
+import { RouteMotion } from "@/components/ui/route-motion";
+import { Footer } from "@/components/layout/footer";
+
+const thai = IBM_Plex_Sans_Thai({ weight: ["400", "500", "600"], subsets: ["thai", "latin"], variable: "--font-thai", display: "swap" });
+const cabinet = localFont({ src: [
+  { path: "../../public/fonts/cabinet-grotesk-regular.woff2", weight: "400", style: "normal" },
+  { path: "../../public/fonts/cabinet-grotesk-bold.woff2", weight: "700", style: "normal" },
+], variable: "--font-cabinet", display: "swap" });
 
 export const metadata: Metadata = {
   title: "MEETSYNC · จองห้องประชุม DII CMU",
@@ -21,12 +30,18 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const user = await getRoomViewer();
   return (
     <html lang="th">
-      <body>
+      <body className={`${thai.variable} ${cabinet.variable}`}>
         <AuthProvider user={user ? { name: user.name, role: user.role } : null}>
-        <a className="skip-link" href="#main-content">ข้ามไปเนื้อหา</a>
-        <Navigation />
-        <main id="main-content" className="page-shell">{children}</main>
-        <footer className="site-footer"><div className="footer-shell"><span>Meeting Room · ระบบจองห้องประชุม</span><Link href="/rooms">ค้นหาพื้นที่สำหรับการประชุมครั้งถัดไป</Link></div></footer>
+          <ToastProvider>
+            <AppProvider>
+              <a className="skip-link" href="#main-content">ข้ามไปเนื้อหา</a>
+              <Navigation />
+              <main id="main-content" className="page-shell">
+                <RouteMotion>{children}</RouteMotion>
+              </main>
+              <Footer />
+            </AppProvider>
+          </ToastProvider>
         </AuthProvider>
       </body>
     </html>
