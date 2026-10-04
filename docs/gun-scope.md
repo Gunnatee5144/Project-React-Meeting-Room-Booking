@@ -4,13 +4,17 @@ Source: section 7 of `Readme.md` on branch `Gun` after the responsibility swap.
 
 ## Delivery order
 
-1. Responsive application shell, navigation, design tokens, reusable UI, and `/`.
-2. Server-rendered `/rooms`, URL search filters, equipment and availability queries.
-3. `/rooms/[id]`, room information and a privacy-safe booking schedule.
-4. Protected `/profile` and `updateProfile` with React Hook Form and Zod.
-5. Protected `/admin/rooms`, equipment selection, image URLs, `createRoom`,
-   `updateRoom`, and history-preserving `deleteRoom`.
-6. Validation, integration documentation, and final verification.
+- [x] 1. Responsive application shell, navigation, design tokens, reusable UI, and `/`.
+- [x] 2. Server-rendered `/rooms`, URL search filters, equipment and availability queries.
+- [x] 3. `/rooms/[id]`, room information and a privacy-safe booking schedule.
+- [x] 4. Protected `/profile` and `updateProfile` with React Hook Form and Zod.
+- [x] 5. Protected `/admin/rooms`, equipment selection, image URLs, `createRoom`,
+  `updateRoom`, and history-preserving `deleteRoom`.
+- [x] 6. Validation, integration documentation, and final verification.
+
+Pending outside Gun's scope: real session issuance and guards (Folk), booking
+actions and forms (Jeff). See `docs/room-integration.md`.
+
 
 Each finished stage is committed and pushed to `Gun`.
 

@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { RoomPlan } from "@/components/ui";
 
 export default function HomePage() {

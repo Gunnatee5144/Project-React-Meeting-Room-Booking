@@ -60,3 +60,23 @@ Its database selection omits user identity, topic, and admin notes.
 
 Database setup remains with Folk: migrations, exclusion constraint, and seeds
 from the proposal must be applied before connecting a shared database.
+
+## Room actions
+
+`createRoom(input)`, `updateRoom(id, input)`, and `deleteRoom(id)` return
+`{ success, message, fieldErrors? }`. Room input is `{ name, location, capacity,
+imageUrl, isActive, equipmentIds }`. IDs come from Equipment rows. Images are
+optional HTTPS URLs without embedded credentials, loaded directly by the browser;
+the server never fetches arbitrary admin image URLs.
+
+Each mutation checks the current session, then rechecks the actor's current DB
+role inside a serializable transaction. Equipment assignments change atomically
+with room fields. Unknown equipment fails rather than silently removing fields.
+Capacity cannot drop below an active booking's attendee count. Serialization
+conflicts retry up to three times. History-bearing rooms are disabled on delete;
+rooms with zero bookings are deleted. A concurrent FK conflict returns a retry
+message, preserving the new booking.
+
+`createEquipment(name)` prevents duplicate names (case insensitive);
+`deleteEquipment(id)` only removes equipment unused by all rooms. Room and
+equipment changes invalidate public, booking, calendar, and admin views.
