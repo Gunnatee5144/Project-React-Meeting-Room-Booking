@@ -14,13 +14,21 @@ const links = [
   { href: "/my-bookings", label: "การจองของฉัน" },
 ];
 
+const adminLinks = [
+  { href: "/admin/bookings", label: "คำขอจอง" },
+  { href: "/admin/rooms", label: "จัดการห้อง" },
+  { href: "/admin/users", label: "ผู้ใช้" },
+  { href: "/admin/reports", label: "รายงาน" },
+];
+
 export function Navigation() {
   const user = useAuth();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const toggle = useRef<HTMLButtonElement>(null);
   const header = useRef<HTMLElement>(null);
-  const items = user?.role === "ADMIN" ? [...links, { href: "/admin/rooms", label: "จัดการห้อง" }] : links;
+  // Display only: every admin page, Server Action and Route Handler re-checks the role on the server.
+  const items = user?.role === "ADMIN" ? [...links, ...adminLinks] : links;
   useEffect(() => {
     const close = (event: KeyboardEvent) => {
       if (event.key === "Escape" && open) { setOpen(false); toggle.current?.focus(); }

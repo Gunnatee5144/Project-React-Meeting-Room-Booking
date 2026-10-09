@@ -7,7 +7,6 @@ import { Navigation } from "@/components/navigation";
 import { AuthProvider } from "@/context/AuthContext";
 import { getRoomViewer } from "@/lib/room-access";
 import { ToastProvider } from "@/context/toast-context";
-import { AppProvider } from "@/context/app-context";
 import { RouteMotion } from "@/components/ui/route-motion";
 import { Footer } from "@/components/layout/footer";
 
@@ -24,23 +23,21 @@ export const metadata: Metadata = {
 };
 
 // Server Component: reads the session cookie on the server (getRoomViewer) so the user is
-// known before first paint, then hands only name and role to the client AuthProvider.
+// known before first paint, then hands only id, name, email and role to the client AuthProvider.
 // Reading cookies makes every route render per request (SSR), not at build time.
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const user = await getRoomViewer();
   return (
     <html lang="th">
       <body className={`${thai.variable} ${cabinet.variable}`}>
-        <AuthProvider user={user ? { name: user.name, role: user.role } : null}>
+        <AuthProvider user={user ? { id: user.id, name: user.name, email: user.email, role: user.role } : null}>
           <ToastProvider>
-            <AppProvider>
-              <a className="skip-link" href="#main-content">ข้ามไปเนื้อหา</a>
-              <Navigation />
-              <main id="main-content" className="page-shell">
-                <RouteMotion>{children}</RouteMotion>
-              </main>
-              <Footer />
-            </AppProvider>
+            <a className="skip-link" href="#main-content">ข้ามไปเนื้อหา</a>
+            <Navigation />
+            <main id="main-content" className="page-shell">
+              <RouteMotion>{children}</RouteMotion>
+            </main>
+            <Footer />
           </ToastProvider>
         </AuthProvider>
       </body>

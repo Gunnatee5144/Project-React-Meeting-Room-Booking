@@ -7,7 +7,7 @@
 // session on the server and never trusts anything held in this context.
 import { createContext, useContext, type ReactNode } from "react";
 
-export type AuthUser = { name: string; role: "USER" | "ADMIN" };
+export type AuthUser = { id: string; name: string; email: string; role: "USER" | "ADMIN" };
 
 const AuthContext = createContext<AuthUser | null>(null);
 

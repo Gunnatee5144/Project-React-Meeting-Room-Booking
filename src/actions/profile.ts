@@ -3,10 +3,8 @@
 // Server Actions (mutations): the account to change comes from the verified session, never from
 // browser input, so one user cannot edit another.
 
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { getRoomViewer, sessionCookieName } from "@/lib/room-access";
+import { getRoomViewer } from "@/lib/room-access";
 import { getPrisma } from "@/lib/prisma";
 import { profileSchema } from "@/schemas/profile";
 import type { RoomActionResult } from "@/types/room-actions";
@@ -28,12 +26,4 @@ export async function updateProfile(input: unknown): Promise<RoomActionResult> {
   revalidatePath("/", "layout");
   revalidatePath("/profile");
   return { success: true, message: "บันทึกข้อมูลส่วนตัวแล้ว" };
-}
-
-// Clears only the cookie used by the integration adapter. Replace with Folk's
-// logoutUser when the team's final session implementation is merged.
-export async function logoutProfileSession() {
-  (await cookies()).delete(sessionCookieName());
-  revalidatePath("/", "layout");
-  redirect("/login");
 }

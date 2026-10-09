@@ -1,23 +1,13 @@
 import "server-only";
-import { cache } from "react";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { getPrisma } from "@/lib/prisma";
-import { readSessionSubject } from "@/lib/session-token";
+import { getSessionUser, sessionCookieName, sessionUserSelect } from "@/lib/auth/session";
 
-export const profileSelect = { id: true, name: true, email: true, department: true, role: true };
-export const sessionCookieName = () => process.env.SESSION_COOKIE_NAME || "session";
-
-// This is the sole integration point for Folk's verified server session helper.
-// No unverified cookie fields, client state, or browser-supplied role authorize access.
-export const getRoomViewer = cache(async () => {
-  const token = (await cookies()).get(sessionCookieName())?.value;
-  const secret = process.env.SESSION_SECRET;
-  if (!token || !secret) return null;
-  const id = readSessionSubject(token, secret);
-  if (!id) return null;
-  return getPrisma().user.findUnique({ where: { id }, select: profileSelect });
-});
+// Room, profile and booking code reads identity through this module. It now delegates to the
+// real session in src/lib/auth (JWT cookie issued by loginUser/registerUser). No unverified
+// cookie fields, client state, or browser-supplied role authorize access.
+export const profileSelect = sessionUserSelect;
+export { sessionCookieName };
+export const getRoomViewer = getSessionUser;
 
 export async function requireRoomViewer(nextPath: "/profile" | "/admin/rooms") {
   const user = await getRoomViewer();

@@ -24,8 +24,6 @@ import {
 } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/ui/badge";
-import { useApp } from "@/context/app-context";
-
 const emptySubscribe = () => () => {};
 
 export interface CalendarRoomItem {
@@ -56,10 +54,9 @@ interface CalendarViewProps {
 
 export function CalendarView({ rooms, bookings, serverIsAdmin = false }: CalendarViewProps) {
   const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
-  const { currentUser } = useApp();
 
-  // Determine if the current viewer is an Admin (either from server session or mock demo role)
-  const isAdmin = Boolean(serverIsAdmin || currentUser?.role === "ADMIN");
+  // Admin status comes only from the verified server session (passed in by the page).
+  const isAdmin = Boolean(serverIsAdmin);
 
   // Default to the first room in the list
   const [selectedRoomId, setSelectedRoomId] = useState<string>(() => rooms[0]?.id || "");

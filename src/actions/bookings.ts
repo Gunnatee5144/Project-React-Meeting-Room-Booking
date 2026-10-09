@@ -17,6 +17,18 @@ import {
 } from "@/schemas/booking";
 import { sendBookingReviewEmail } from "@/lib/email/mailer";
 import type { BookingActionResult } from "@/types/booking-actions";
+import {
+  ACTIVE_BOOKING_STATUSES,
+  OVERLAP_MESSAGE,
+  canCancelBooking,
+  canEditBooking,
+  checkRoomForBooking,
+  isOverlapConstraintError,
+} from "@/lib/booking-rules";
+
+// Overlap handling: each action checks for conflicts first (friendly message), and the database
+// exclusion constraint "no_overlapping_bookings" is the final guard when two requests race past
+// that check. isOverlapConstraintError() turns that rejection into the same friendly message.
 
 function refreshBookingViews(roomId?: string) {
   for (const path of ["/", "/rooms", "/calendar", "/my-bookings", "/admin/bookings", "/admin/reports"]) {
@@ -61,14 +73,12 @@ export async function createBooking(input: unknown): Promise<BookingActionResult
     if (!room) {
       return { success: false, message: "ไม่พบห้องประชุมที่เลือก" };
     }
-    if (!room.isActive) {
-      return { success: false, message: "ห้องประชุมนี้ปิดปรับปรุง ไม่สามารถส่งคำขอจองได้" };
-    }
-    if (parsed.data.attendeeCount > room.capacity) {
+    const roomIssue = checkRoomForBooking(room, parsed.data.attendeeCount);
+    if (roomIssue) {
       return {
         success: false,
-        message: `จำนวนผู้เข้าร่วมเกินความจุห้อง (รองรับสูงสุด ${room.capacity} คน)`,
-        fieldErrors: { attendeeCount: [`ห้องนี้รองรับได้สูงสุด ${room.capacity} คน`] },
+        message: roomIssue.field === "attendeeCount" ? `จำนวนผู้เข้าร่วมไม่ถูกต้อง: ${roomIssue.message}` : roomIssue.message,
+        ...(roomIssue.field ? { fieldErrors: { [roomIssue.field]: [roomIssue.message] } } : {}),
       };
     }
 
@@ -76,17 +86,15 @@ export async function createBooking(input: unknown): Promise<BookingActionResult
     const overlap = await prisma.booking.findFirst({
       where: {
         roomId: room.id,
-        status: { in: ["PENDING", "APPROVED"] },
+        status: { in: [...ACTIVE_BOOKING_STATUSES] },
         startTime: { lt: endTime },
         endTime: { gt: startTime },
       },
+      select: { id: true },
     });
 
     if (overlap) {
-      return {
-        success: false,
-        message: "ช่วงเวลาดังกล่าวมีคำขอจองหรือได้รับการอนุมัติแล้ว กรุณาเลือกช่วงเวลาอื่น",
-      };
+      return { success: false, message: OVERLAP_MESSAGE };
     }
 
     const booking = await prisma.booking.create({
@@ -108,6 +116,7 @@ export async function createBooking(input: unknown): Promise<BookingActionResult
       bookingId: booking.id,
     };
   } catch (error) {
+    if (isOverlapConstraintError(error)) return { success: false, message: OVERLAP_MESSAGE };
     console.error("Booking creation failed:", error);
     return { success: false, message: "บันทึกการจองไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" };
   }
@@ -154,7 +163,7 @@ export async function updateBooking(id: unknown, input: unknown): Promise<Bookin
     if (existing.status !== "PENDING" && existing.status !== "APPROVED") {
       return { success: false, message: "ไม่สามารถแก้ไขรายการที่ยกเลิกหรือไม่อนุมัติแล้วได้" };
     }
-    if (existing.startTime.getTime() <= Date.now()) {
+    if (!canEditBooking(existing.status, existing.startTime)) {
       return { success: false, message: "ไม่สามารถแก้ไขการจองที่เลยเวลาเริ่มใช้งานแล้วได้" };
     }
 
@@ -165,11 +174,12 @@ export async function updateBooking(id: unknown, input: unknown): Promise<Bookin
     if (!room || !room.isActive) {
       return { success: false, message: "ห้องประชุมที่เลือกไม่พร้อมใช้งาน" };
     }
-    if (parsed.data.attendeeCount > room.capacity) {
+    const roomIssue = checkRoomForBooking(room, parsed.data.attendeeCount);
+    if (roomIssue) {
       return {
         success: false,
-        message: `จำนวนผู้เข้าร่วมเกินความจุห้อง (${room.capacity} คน)`,
-        fieldErrors: { attendeeCount: [`ห้องนี้รองรับได้สูงสุด ${room.capacity} คน`] },
+        message: roomIssue.field === "attendeeCount" ? `จำนวนผู้เข้าร่วมไม่ถูกต้อง: ${roomIssue.message}` : roomIssue.message,
+        ...(roomIssue.field ? { fieldErrors: { [roomIssue.field]: [roomIssue.message] } } : {}),
       };
     }
 
@@ -178,17 +188,15 @@ export async function updateBooking(id: unknown, input: unknown): Promise<Bookin
       where: {
         roomId: room.id,
         id: { not: existing.id },
-        status: { in: ["PENDING", "APPROVED"] },
+        status: { in: [...ACTIVE_BOOKING_STATUSES] },
         startTime: { lt: endTime },
         endTime: { gt: startTime },
       },
+      select: { id: true },
     });
 
     if (overlap) {
-      return {
-        success: false,
-        message: "ช่วงเวลาดังกล่าวมีการจองแล้ว กรุณาเลือกช่วงเวลาอื่น",
-      };
+      return { success: false, message: OVERLAP_MESSAGE };
     }
 
     // Revert to PENDING after update so admin can re-review
@@ -210,6 +218,7 @@ export async function updateBooking(id: unknown, input: unknown): Promise<Bookin
       message: "แก้ไขคำขอจองเรียบร้อยแล้ว (สถานะเปลี่ยนเป็นรอตรวจสอบใหม่)",
     };
   } catch (error) {
+    if (isOverlapConstraintError(error)) return { success: false, message: OVERLAP_MESSAGE };
     console.error("Booking update failed:", error);
     return { success: false, message: "แก้ไขการจองไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" };
   }
@@ -244,8 +253,7 @@ export async function cancelBooking(id: unknown, reason?: unknown): Promise<Book
     }
 
     // Cancel rule: at least 1 hour before start
-    const diffMs = existing.startTime.getTime() - Date.now();
-    if (diffMs < 60 * 60 * 1000) {
+    if (!canCancelBooking(existing.status, existing.startTime)) {
       return {
         success: false,
         message: "สามารถยกเลิกการจองล่วงหน้าได้อย่างน้อย 1 ชั่วโมงก่อนถึงเวลาเริ่มใช้งาน",
@@ -304,21 +312,24 @@ export async function reviewBooking(id: unknown, input: unknown): Promise<Bookin
       return { success: false, message: "คำขอนี้ถูกยกเลิกไปแล้ว ไม่สามารถพิจารณาได้" };
     }
 
-    // If approving, re-check that no already-approved booking conflicts
+    // Re-opening a REJECTED request (REJECTED -> APPROVED) puts it back into the active set, so
+    // make sure no other PENDING/APPROVED booking took the slot in the meantime. The database
+    // exclusion constraint backs this up if two reviews race.
     if (parsed.data.status === "APPROVED") {
       const conflict = await prisma.booking.findFirst({
         where: {
           roomId: existing.roomId,
           id: { not: existing.id },
-          status: "APPROVED",
+          status: { in: [...ACTIVE_BOOKING_STATUSES] },
           startTime: { lt: existing.endTime },
           endTime: { gt: existing.startTime },
         },
+        select: { id: true },
       });
       if (conflict) {
         return {
           success: false,
-          message: "ไม่สามารถอนุมัติได้ เนื่องจากมีรายการอื่นที่ได้รับการอนุมัติในช่วงเวลาเดียวกันแล้ว",
+          message: "ไม่สามารถอนุมัติได้ เนื่องจากมีรายการอื่นที่จองหรืออนุมัติในช่วงเวลาเดียวกันแล้ว",
         };
       }
     }
@@ -361,6 +372,9 @@ export async function reviewBooking(id: unknown, input: unknown): Promise<Bookin
           : "ปฏิเสธคำขอจองห้องประชุมเรียบร้อยแล้ว",
     };
   } catch (error) {
+    if (isOverlapConstraintError(error)) {
+      return { success: false, message: "ไม่สามารถอนุมัติได้ เนื่องจากช่วงเวลานี้ถูกจองหรืออนุมัติโดยรายการอื่นแล้ว" };
+    }
     console.error("Booking review failed:", error);
     return { success: false, message: "ดำเนินการไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" };
   }

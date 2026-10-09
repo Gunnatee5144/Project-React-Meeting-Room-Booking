@@ -14,15 +14,30 @@ async function main() {
 
   const pool = new pg.Pool({
     connectionString: cleanUrl,
-    ssl: isLocal ? false : { rejectUnauthorized: false },
+    // Verify against the provider CA when DATABASE_CA_CERT is set; otherwise fall back to
+    // encrypting without verification (acceptable for a one-off seed, not for the app).
+    ssl: isLocal
+      ? false
+      : process.env.DATABASE_CA_CERT
+        ? { ca: process.env.DATABASE_CA_CERT.replace(/\\n/g, "\n").trim() }
+        : { rejectUnauthorized: false },
   });
 
-  console.log("Connecting to PostgreSQL on Aiven...");
+  console.log(`Connecting to PostgreSQL (${isLocal ? "local" : "remote"})...`);
   const client = await pool.connect();
 
   try {
-    console.log("Preparing default password hash...");
-    const passwordHash = await bcrypt.hash("password123", 10);
+    // Passwords come from the environment so no real credential lives in the repo.
+    // The fallbacks are for local development only; any non-local database must set both.
+    const userPassword = process.env.SEED_USER_PASSWORD;
+    const adminPassword = process.env.SEED_ADMIN_PASSWORD;
+    if (!isLocal && (!userPassword || !adminPassword)) {
+      console.error("Set SEED_USER_PASSWORD and SEED_ADMIN_PASSWORD before seeding a non-local database.");
+      process.exit(1);
+    }
+    console.log("Preparing password hashes...");
+    const passwordHash = await bcrypt.hash(userPassword || "password123", 12);
+    const adminPasswordHash = await bcrypt.hash(adminPassword || "adminpass123", 12);
 
     // 1. Users
     const users = [
@@ -70,7 +85,7 @@ async function main() {
         id: "usr-admin",
         name: "ดร. สมชาย ภัทรเดช (Admin)",
         email: "admin.meeting@cmu.ac.th",
-        passwordHash,
+        passwordHash: adminPasswordHash,
         department: "ศูนย์เทคโนโลยีและบริหารอาคารกลาง",
         role: "ADMIN",
       },
@@ -83,10 +98,8 @@ async function main() {
          VALUES ($1, $2, $3, $4, $5, $6::"Role", NOW())
          ON CONFLICT (id) DO UPDATE SET
            name = EXCLUDED.name,
-           email = EXCLUDED.email,
-           "passwordHash" = EXCLUDED."passwordHash",
-           department = EXCLUDED.department,
-           role = EXCLUDED.role`,
+           department = EXCLUDED.department`,
+        // Re-running the seed never resets an existing account's email, password or role.
         [u.id, u.name, u.email, u.passwordHash, u.department, u.role]
       );
     }
@@ -291,8 +304,10 @@ async function main() {
           b.roomId,
           b.userId,
           b.topic,
-          b.startTime,
-          b.endTime,
+          // Columns are "timestamp without time zone" holding UTC (what Prisma reads/writes).
+          // Passing "...+07:00" text would silently drop the offset, so convert to UTC first.
+          new Date(b.startTime).toISOString(),
+          new Date(b.endTime).toISOString(),
           b.attendeeCount,
           b.status,
           b.adminNote,

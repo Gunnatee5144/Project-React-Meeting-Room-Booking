@@ -32,7 +32,7 @@ npm run db:migrate -- --name init --create-only
 npm run db:migrate
 ```
 
-ยังไม่มี seed script ให้เพิ่มเมื่อพัฒนา Seed Data แล้ว ห้าม commit `.env`, รหัสผ่านจริง หรือ Prisma Client ที่ generate แล้ว
+มี migration แรกใน `prisma/migrations/` แล้ว (รวม exclusion constraint) ใช้ `npm run db:migrate` บนเครื่องพัฒนา หรือ `npm run db:deploy` บนฐานข้อมูลที่ใช้ร่วมกัน แล้วรัน `npm run db:seed` เพื่อสร้างข้อมูลตัวอย่าง (รหัสผ่านตั้งค่าผ่าน `SEED_USER_PASSWORD` / `SEED_ADMIN_PASSWORD`) ห้าม commit `.env`, รหัสผ่านจริง หรือ Prisma Client ที่ generate แล้ว
 
 ## สิ่งที่เตรียมไว้
 
@@ -42,7 +42,9 @@ npm run db:migrate
 - Prisma schema ตาม proposal พร้อม config และ `getPrisma()` ใน `src/lib/prisma.ts` สำหรับเรียกจาก server โดยไม่เปิด connection ตอนโหลดหน้า placeholder
 - Dependencies สำหรับ React Hook Form, Zod, FullCalendar, bcrypt และ Nodemailer พร้อมใช้ใน branch ของแต่ละคน
 
-ยังไม่ได้ทำ UI จริง, AuthContext, session, guards, Server Actions, `GET /api/bookings`, migration, exclusion constraint, seed, อีเมล หรือ logic การจอง หน้า Admin ยังเป็น placeholder เปิดได้ทั่วไป ห้ามใช้กับข้อมูลจริงก่อนเพิ่มการตรวจ session และสิทธิ์บน server
+ส่วนของ Database / Auth ทำแล้ว: migration พร้อม exclusion constraint (`prisma/migrations/`), seed (`npm run db:seed`), `/register`, `/login`, `registerUser` / `loginUser` / `logoutUser`, session แบบ JWT ใน cookie HttpOnly (`src/lib/auth/`), `AuthContext`, guard ผู้ใช้/Admin (`requireUser`, `requireAdmin`), `GET /api/bookings`, `/admin/users` พร้อม `updateUserRole` และ `/admin/reports` ดูวิธี deploy ที่ `docs/deploy.md`
+
+ต้องตั้ง `DATABASE_URL` และ `SESSION_SECRET` (32 ตัวอักษรขึ้นไป) ใน `.env` ก่อนใช้งาน login และการจอง ดู `.env.example`
 
 ## โครงสร้างสำหรับแบ่งงาน
 
@@ -53,7 +55,7 @@ prisma/
 public/                  # Static assets
 src/
   app/                   # Page routes, layout, global CSS
-    api/bookings/        # Reserved for GET /api/bookings (not implemented)
+    api/bookings/        # GET /api/bookings Route Handler
     admin/               # Optional page placeholders
   actions/               # Server Actions, grouped by feature
   components/            # Shared UI; placeholder-page.tsx is temporary

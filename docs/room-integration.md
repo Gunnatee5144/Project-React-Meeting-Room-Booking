@@ -2,9 +2,14 @@
 
 ## Server identity
 
+> Update: Folk's auth is merged. `getRoomViewer()` now delegates to
+> `src/lib/auth/session.ts` (`getSessionUser`), `loginUser`/`registerUser` issue the cookie and
+> `logoutUser` replaces `logoutProfileSession`. The notes below describe the token format, which
+> is unchanged.
+
 `src/lib/room-access.ts` is the single integration point with Folk's auth work.
 Gun does not implement registration, login, session issuance, or AuthContext.
-Until those arrive, the adapter verifies an **HS256 JWT** from the HttpOnly
+The session reader verifies an **HS256 JWT** from the HttpOnly
 `session` cookie (`SESSION_COOKIE_NAME` can override the name). The secret comes
 from `SESSION_SECRET`, with at least 32 characters. JWT claims: `sub` is the
 database User ID, `exp` is an integer Unix timestamp in seconds; optional `nbf`

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { checkBookingTimes } from "../lib/booking-rules.ts";
 
 export const THAI_TIME_ZONE = "Asia/Bangkok";
 
@@ -32,20 +33,9 @@ export const bookingSchema = z.object({
     context.addIssue({ code: "custom", path: ["endTime"], message: "ระบุวันที่และเวลาสิ้นสุดให้ถูกต้อง" });
     return;
   }
-  if (end <= start) {
-    context.addIssue({ code: "custom", path: ["endTime"], message: "เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่มต้น" });
-  }
-
-  const now = Date.now();
-  // Allow a 1-minute grace period for clock drift during form submission
-  if (start.getTime() < now - 60_000) {
-    context.addIssue({ code: "custom", path: ["startTime"], message: "เวลาเริ่มต้นต้องอยู่ในอนาคต" });
-  }
-
-  const maxAdvanceMs = 30 * 24 * 60 * 60 * 1000;
-  if (start.getTime() > now + maxAdvanceMs) {
-    context.addIssue({ code: "custom", path: ["date"], message: "จองล่วงหน้าได้ไม่เกิน 30 วัน" });
-  }
+  // Time rules live in booking-rules.ts so the API and Server Actions share one definition.
+  const issue = checkBookingTimes(start, end);
+  if (issue) context.addIssue({ code: "custom", path: [issue.field], message: issue.message });
 });
 
 export const bookingIdSchema = z.string().min(1, "รหัสการจองไม่ถูกต้อง").max(100);
