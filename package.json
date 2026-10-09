@@ -17,6 +17,7 @@
     "db:generate": "prisma generate",
     "db:validate": "prisma validate",
     "db:migrate": "prisma migrate dev",
+    "db:seed": "node scripts/seed-database.mjs",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate"
   },
