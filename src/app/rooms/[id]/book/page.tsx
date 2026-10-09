@@ -4,7 +4,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { PageHeading, EmptyState } from "@/components/ui";
+import { PageHeading } from "@/components/ui";
 import { BookingForm } from "@/components/booking-form";
 import { getRoom } from "@/lib/rooms";
 import { getRoomViewer } from "@/lib/room-access";
@@ -17,17 +17,6 @@ interface BookPageProps {
 
 export default async function BookRoomPage({ params }: BookPageProps) {
   const { id } = await params;
-
-  if (!process.env.DATABASE_URL) {
-    return (
-      <EmptyState
-        title="ยังไม่พร้อมส่งคำขอจอง"
-        description="ระบบฐานข้อมูลยังไม่พร้อมใช้งาน กรุณาลองใหม่อีกครั้งในภายหลัง"
-        href="/rooms"
-        label="กลับไปหน้ารายการห้อง"
-      />
-    );
-  }
 
   const room = await getRoom(id);
   if (!room) {

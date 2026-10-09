@@ -1,70 +1,40 @@
-// Server Component: fetches rooms and schedule data on the server and passes to CalendarView.
+// Server Component: fetches rooms and schedule data from Prisma and passes to CalendarView.
 // FullCalendar is loaded client-side inside CalendarView for rich interactive scheduling.
 
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { PageHeading } from "@/components/ui";
-import { CalendarView, type CalendarEventItem } from "@/components/calendar-view";
+import { getRoomViewer } from "@/lib/room-access";
+import { CalendarView, type CalendarEventItem, type CalendarRoomItem } from "@/components/calendar-view";
 import { getCalendarBookings } from "@/lib/bookings";
 import { getPrisma } from "@/lib/prisma";
-import { INITIAL_ROOMS, INITIAL_BOOKINGS } from "@/lib/mock-data";
 
 export const dynamic = "force-dynamic";
 
 export default async function CalendarPage() {
-  let rooms: { id: string; name: string; location: string }[] = [];
-  let bookings: CalendarEventItem[] = [];
+  const user = await getRoomViewer();
+  const serverIsAdmin = user?.role === "ADMIN";
 
-  if (process.env.DATABASE_URL) {
-    try {
-      const prisma = getPrisma();
-      const dbRooms = await prisma.room.findMany({
-        where: { isActive: true },
-        select: { id: true, name: true, location: true },
-        orderBy: { name: "asc" },
-      });
-      rooms = dbRooms;
+  const prisma = getPrisma();
+  const dbRooms = await prisma.room.findMany({
+    where: { isActive: true },
+    select: { id: true, name: true, location: true, capacity: true, imageUrl: true },
+    orderBy: { name: "asc" },
+  });
+  const rooms: CalendarRoomItem[] = dbRooms;
 
-      const dbBookings = await getCalendarBookings();
-      bookings = dbBookings.map((b) => ({
-        id: b.id,
-        roomId: b.roomId,
-        roomName: b.room.name,
-        roomLocation: b.room.location,
-        topic: b.topic,
-        startTime: b.startTime.toISOString(),
-        endTime: b.endTime.toISOString(),
-        status: b.status as "PENDING" | "APPROVED",
-        attendeeCount: b.attendeeCount,
-      }));
-    } catch (e) {
-      console.error("Database calendar fetch failed, falling back to initial data:", e);
-    }
-  }
-
-  // Fallback to sample data if database not yet migrated or empty
-  if (rooms.length === 0) {
-    rooms = INITIAL_ROOMS.map((r) => ({
-      id: r.id,
-      name: r.name,
-      location: r.location,
-    }));
-  }
-  if (bookings.length === 0) {
-    bookings = INITIAL_BOOKINGS.filter(
-      (b) => b.status === "PENDING" || b.status === "APPROVED"
-    ).map((b) => ({
-      id: b.id,
-      roomId: b.roomId,
-      roomName: b.roomName,
-      roomLocation: b.roomLocation,
-      topic: b.topic,
-      startTime: b.startTime,
-      endTime: b.endTime,
-      status: b.status as "PENDING" | "APPROVED",
-      attendeeCount: b.attendeeCount,
-    }));
-  }
+  const dbBookings = await getCalendarBookings(undefined, serverIsAdmin);
+  const bookings: CalendarEventItem[] = dbBookings.map((b) => ({
+    id: b.id,
+    roomId: b.roomId,
+    roomName: b.room.name,
+    roomLocation: b.room.location,
+    topic: b.topic,
+    startTime: b.startTime.toISOString(),
+    endTime: b.endTime.toISOString(),
+    status: b.status as "PENDING" | "APPROVED",
+    attendeeCount: b.attendeeCount,
+  }));
 
   return (
     <div className="workspace-page mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-8">
@@ -80,7 +50,7 @@ export default async function CalendarPage() {
         </Link>
       </div>
 
-      <CalendarView rooms={rooms} bookings={bookings} />
+      <CalendarView rooms={rooms} bookings={bookings} serverIsAdmin={serverIsAdmin} />
     </div>
   );
 }

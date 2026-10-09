@@ -1,4 +1,4 @@
-// Server Component: fetches the current user's booking history securely on the server.
+// Server Component: fetches the current user's booking history securely from the database.
 // Only MyBookingsManager is a Client Component to handle user confirmation dialogs and mutations.
 
 import Link from "next/link";
@@ -8,65 +8,34 @@ import { PageHeading } from "@/components/ui";
 import { getRoomViewer } from "@/lib/room-access";
 import { getUserBookings, isBookingCancellable, isBookingEditable } from "@/lib/bookings";
 import { MyBookingsManager, type UserBookingRecord } from "@/components/my-bookings-manager";
-import { INITIAL_BOOKINGS } from "@/lib/mock-data";
 
 export const dynamic = "force-dynamic";
 
 export default async function MyBookingsPage() {
   const user = await getRoomViewer();
 
-  // If not authenticated, redirect to login
-  if (!user && process.env.DATABASE_URL) {
+  if (!user) {
     redirect("/login?next=/my-bookings");
   }
 
-  let bookings: UserBookingRecord[] = [];
-
-  if (user && process.env.DATABASE_URL) {
-    try {
-      const dbBookings = await getUserBookings(user.id);
-      bookings = dbBookings.map((b) => ({
-        id: b.id,
-        roomId: b.roomId,
-        roomName: b.room.name,
-        roomLocation: b.room.location,
-        topic: b.topic,
-        startTime: b.startTime.toISOString(),
-        endTime: b.endTime.toISOString(),
-        attendeeCount: b.attendeeCount,
-        status: b.status as UserBookingRecord["status"],
-        adminNote: b.adminNote,
-        createdAt: b.createdAt.toISOString(),
-        userName: user.name,
-        userDepartment: user.department,
-        canCancel: isBookingCancellable(b.status, b.startTime),
-        canEdit: isBookingEditable(b.status, b.startTime),
-      }));
-    } catch (e) {
-      console.error("Failed to load user bookings from database:", e);
-    }
-  }
-
-  // Graceful fallback for demo/scaffold mode if database is not active
-  if (bookings.length === 0 && !process.env.DATABASE_URL) {
-    bookings = INITIAL_BOOKINGS.map((b) => ({
-      id: b.id,
-      roomId: b.roomId,
-      roomName: b.roomName,
-      roomLocation: b.roomLocation,
-      topic: b.topic,
-      startTime: b.startTime,
-      endTime: b.endTime,
-      attendeeCount: b.attendeeCount,
-      status: b.status,
-      adminNote: b.adminNote,
-      createdAt: b.createdAt,
-      userName: b.userName,
-      userDepartment: b.userDepartment,
-      canCancel: isBookingCancellable(b.status, b.startTime),
-      canEdit: isBookingEditable(b.status, b.startTime),
-    }));
-  }
+  const dbBookings = await getUserBookings(user.id);
+  const bookings: UserBookingRecord[] = dbBookings.map((b) => ({
+    id: b.id,
+    roomId: b.roomId,
+    roomName: b.room.name,
+    roomLocation: b.room.location,
+    topic: b.topic,
+    startTime: b.startTime.toISOString(),
+    endTime: b.endTime.toISOString(),
+    attendeeCount: b.attendeeCount,
+    status: b.status as UserBookingRecord["status"],
+    adminNote: b.adminNote,
+    createdAt: b.createdAt.toISOString(),
+    userName: user.name,
+    userDepartment: user.department,
+    canCancel: isBookingCancellable(b.status, b.startTime),
+    canEdit: isBookingEditable(b.status, b.startTime),
+  }));
 
   return (
     <div className="workspace-page mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 space-y-8">
