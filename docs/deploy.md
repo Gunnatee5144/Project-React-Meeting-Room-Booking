@@ -43,6 +43,20 @@ Seed passwords:
 - any other database: `SEED_USER_PASSWORD` and `SEED_ADMIN_PASSWORD` are mandatory. Change the
   admin password after first login and use `/admin/users` to promote real admins.
 
+### Prisma Postgres
+
+The shared database is a Prisma Postgres instance (PostgreSQL 17, created 2026-10-10) with the
+init migration and seed applied. Notes for anyone connecting to it or creating another one:
+
+- Use the direct connection string (`postgres://…@db.prisma.io:5432/postgres?sslmode=require`) as
+  `DATABASE_URL`. The app, `db:deploy` and `db:seed` all read this one variable; the
+  `POSTGRES_URL` / `PRISMA_DATABASE_URL` copies the console also shows are not used.
+- Leave `DATABASE_CA_CERT` empty: the certificate is signed by a public CA.
+- `btree_gist` 1.7 is available, so `no_overlapping_bookings` is created by `db:deploy` as usual.
+- `pg` prints a warning that `sslmode=require` is currently treated as `verify-full`; it is
+  harmless here.
+- Get the connection string from the database owner and keep it in `.env` only.
+
 ## 3. Build and start
 
 ```sh

@@ -12,8 +12,9 @@ Source: section 7 of `Readme.md` on branch `Gun` after the responsibility swap.
   `updateRoom`, and history-preserving `deleteRoom`.
 - [x] 6. Validation, integration documentation, and final verification.
 
-Pending outside Gun's scope: real session issuance and guards (Folk), booking
-actions and forms (Jeff). See `docs/room-integration.md`.
+Integrated after merge: Folk's session and guards back `getRoomViewer()` (see
+`docs/room-integration.md`), and Jeff's booking form, calendar and reviews link from the room
+pages. Nothing in Gun's scope is pending.
 
 
 Each finished stage is committed and pushed to `Gun`.

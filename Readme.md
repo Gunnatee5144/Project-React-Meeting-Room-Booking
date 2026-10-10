@@ -1,6 +1,6 @@
 # Meeting Room Booking
 
-โครงสร้างเริ่มต้นสำหรับสมาชิกแยก branch ไปพัฒนา ตาม proposal ด้านล่าง
+ระบบจองห้องประชุมออนไลน์ตาม proposal ด้านล่าง ทุก route ในหัวข้อ 2 (รวมหน้า Admin แบบ Optional) พัฒนาเสร็จและ merge เข้า `main` แล้ว ดูสถานะรายคนที่หัวข้อ 8 และข้อจำกัดที่ทราบที่หัวข้อ 9
 
 ## เริ่มใช้งาน
 
@@ -11,9 +11,9 @@ npm ci
 npm run dev
 ```
 
-เปิด `http://localhost:3000` ได้ทันที หน้า placeholder ไม่ต้องใช้ PostgreSQL หรือ `.env` และ `npm ci` จะ generate Prisma Client ให้แล้ว
+เปิด `http://localhost:3000` ได้ทันที หน้าแรกไม่ต้องใช้ PostgreSQL หรือ `.env` และ `npm ci` จะ generate Prisma Client ให้แล้ว ส่วนหน้าอื่น (ห้อง การจอง ปฏิทิน บัญชีผู้ใช้ และ Admin) ต้องตั้งค่าฐานข้อมูลตามขั้นตอนถัดไปก่อน
 
-เมื่อต้องเริ่มงานฐานข้อมูล ให้คัดลอก `.env.example` เป็น `.env` แล้วแก้ `DATABASE_URL` ให้ตรง PostgreSQL ของตนเอง:
+ตั้งค่าฐานข้อมูลโดยคัดลอก `.env.example` เป็น `.env` แล้วแก้ `DATABASE_URL` ให้ตรง PostgreSQL ของตนเอง:
 
 ```powershell
 Copy-Item .env.example .env
@@ -24,59 +24,68 @@ npm run db:validate
 npm run db:generate
 ```
 
-ผู้รับผิดชอบฐานข้อมูลสร้าง migration แรกและ exclusion constraint พร้อมกัน ก่อนทีมเริ่มใช้ฐานข้อมูลร่วมกัน ไม่ใช้ `db push` แทน migration เพราะจะไม่ได้ constraint ป้องกันการจองซ้อน
+มี migration แรกใน `prisma/migrations/20261010000000_init/` แล้ว (รวม exclusion constraint `no_overlapping_bookings`) ใช้ `npm run db:migrate` บนเครื่องพัฒนา หรือ `npm run db:deploy` บนฐานข้อมูลที่ใช้ร่วมกัน แล้วรัน `npm run db:seed` เพื่อสร้างข้อมูลตัวอย่าง (รหัสผ่านตั้งค่าผ่าน `SEED_USER_PASSWORD` / `SEED_ADMIN_PASSWORD`) ห้าม commit `.env`, รหัสผ่านจริง หรือ Prisma Client ที่ generate แล้ว
 
 ```sh
-npm run db:migrate -- --name init --create-only
-# Add the exclusion constraint from the proposal to the generated migration.sql.
 npm run db:migrate
+npm run db:seed
 ```
 
-มี migration แรกใน `prisma/migrations/` แล้ว (รวม exclusion constraint) ใช้ `npm run db:migrate` บนเครื่องพัฒนา หรือ `npm run db:deploy` บนฐานข้อมูลที่ใช้ร่วมกัน แล้วรัน `npm run db:seed` เพื่อสร้างข้อมูลตัวอย่าง (รหัสผ่านตั้งค่าผ่าน `SEED_USER_PASSWORD` / `SEED_ADMIN_PASSWORD`) ห้าม commit `.env`, รหัสผ่านจริง หรือ Prisma Client ที่ generate แล้ว
+ไม่ใช้ `db push` แทน migration เพราะจะไม่ได้ constraint ป้องกันการจองซ้อน และไม่สร้าง migration `init` ตัวที่สอง เมื่อต้องเปลี่ยน schema ให้เพิ่ม migration ใหม่ด้วย `npm run db:migrate -- --name <change>`
 
-## สิ่งที่เตรียมไว้
+## สิ่งที่มีในโปรเจกต์
 
 - Next.js App Router + React + TypeScript (strict mode) + Tailwind CSS
 - ESLint, alias `@/*` สำหรับ `src/*`, `.editorconfig`, `.gitignore`, `.env.example`, npm lockfile
-- ทุก page route ใน proposal รวมหน้า Admin แบบ Optional เป็น placeholder เท่านั้น
-- Prisma schema ตาม proposal พร้อม config และ `getPrisma()` ใน `src/lib/prisma.ts` สำหรับเรียกจาก server โดยไม่เปิด connection ตอนโหลดหน้า placeholder
-- Dependencies สำหรับ React Hook Form, Zod, FullCalendar, bcrypt และ Nodemailer พร้อมใช้ใน branch ของแต่ละคน
+- ทุก page route ใน proposal รวมหน้า Admin แบบ Optional พร้อม Server Actions และ Route Handler `GET /api/bookings`
+- Prisma schema ตาม proposal พร้อม config และ `getPrisma()` ใน `src/lib/prisma.ts` สำหรับเรียกจาก server โดยไม่เปิด connection จนกว่าจะมีการอ่านข้อมูลจริง
+- React Hook Form + Zod, FullCalendar, bcrypt และ Nodemailer
+- Unit test (`npm test`) และ end-to-end test ด้วย Playwright (`npm run test:e2e`) บนฐานข้อมูลจำลองในหน่วยความจำ
 
 ส่วนของ Database / Auth ทำแล้ว: migration พร้อม exclusion constraint (`prisma/migrations/`), seed (`npm run db:seed`), `/register`, `/login`, `registerUser` / `loginUser` / `logoutUser`, session แบบ JWT ใน cookie HttpOnly (`src/lib/auth/`), `AuthContext`, guard ผู้ใช้/Admin (`requireUser`, `requireAdmin`), `GET /api/bookings`, `/admin/users` พร้อม `updateUserRole` และ `/admin/reports` ดูวิธี deploy ที่ `docs/deploy.md`
 
 ต้องตั้ง `DATABASE_URL` และ `SESSION_SECRET` (32 ตัวอักษรขึ้นไป) ใน `.env` ก่อนใช้งาน login และการจอง ดู `.env.example`
 
-## โครงสร้างสำหรับแบ่งงาน
+## โครงสร้างโปรเจกต์
 
 ```text
+docs/                    # Deploy guide and per-member scope notes
 prisma/
   schema.prisma          # Shared models from the proposal
-  migrations/            # Database owner adds migrations and SQL constraint
-public/                  # Static assets
+  migrations/            # Init migration with the hand-written exclusion constraint
+public/                  # Static assets and fonts
+scripts/
+  seed-database.mjs      # npm run db:seed
 src/
   app/                   # Page routes, layout, global CSS
-    api/bookings/        # GET /api/bookings Route Handler
-    admin/               # Optional page placeholders
-  actions/               # Server Actions, grouped by feature
-  components/            # Shared UI; placeholder-page.tsx is temporary
-  context/               # AuthContext implementation goes here
+    api/bookings/        # GET /api/bookings Route Handler (used by the calendar)
+    admin/               # Admin pages: bookings, rooms, users, reports
+  actions/               # Server Actions: auth, bookings, profile, rooms, users
+  components/            # Shared UI and feature Client Components
+  context/               # AuthContext (useAuth) and toast context
   lib/
     prisma.ts            # Server-only Prisma Client getter
-    auth/                # Session and permission helpers
-    email/               # SMTP helpers
+    auth/                # Session, guards (requireUser / requireAdmin), login throttle
+    email/               # Nodemailer / SMTP helper
+    booking-rules.ts     # Booking conditions shared by actions, API and tests
+    calendar-time.ts     # Bangkok time conversion between the API and FullCalendar
   schemas/               # Shared Zod schemas
-  types/                 # Shared application types and interfaces
+  types/                 # Shared action result types
+tests/
+  *.test.mjs             # Unit tests (node --test)
+  e2e/                   # Playwright specs
+  support/test-db.mjs    # In-memory PostgreSQL for e2e
 ```
 
-โฟลเดอร์ว่างมี `.gitkeep` เพื่อเก็บใน Git ยังไม่ได้ตกลง interface ของ session หรือ Server Actions ให้ทีมตกลงก่อนเขียนฟีเจอร์ตามหัวข้อ 7
+Interface กลาง: session อ่านผ่าน `getSessionUser()` (`src/lib/auth/session.ts`) เท่านั้น หน้า server ใช้ `requireUser()` / `requireAdmin()` จาก `src/lib/auth/guards.ts` ส่วน Server Action คืนค่ารูปแบบ `{ success, message, fieldErrors? }` ตาม `src/types/`
 
 ## แยก branch ทำงาน
 
-หลังนำ basecode เข้า branch หลักแล้ว ให้แต่ละคน checkout branch หลักล่าสุด แล้วสร้าง branch ของงานตัวเอง เช่น:
+แต่ละคนทำงานบน branch ของตัวเอง (`Folk`, `Gun`, `Jeff`) แล้วเปิด Pull Request เข้า `main` ก่อนเริ่มงานใหม่ให้ดึง `main` ล่าสุดก่อนเสมอ งานแก้ไขย่อยแยก branch จาก `main` เช่น:
 
 ```sh
-git switch -c feature/database-auth
-# Other members use feature/rooms-ui or feature/booking-calendar.
+git switch main && git pull
+git switch -c fix/short-description
 ```
 
 - Database / Auth: `prisma/`, `src/lib/auth/`, `src/context/`, `src/schemas/`, `src/types/`, หน้า register/login, API bookings และงาน Admin ที่รับผิดชอบ
@@ -91,8 +100,12 @@ git switch -c feature/database-auth
 npm run lint
 npm run typecheck
 npm run db:validate
+npm test
 npm run build
+npm run test:e2e
 ```
+
+`npm run test:e2e` build แอปแล้วรัน Playwright กับ PostgreSQL จำลองในหน่วยความจำ (ไม่แตะ `DATABASE_URL` จริง) ต้องมี Google Chrome ในเครื่อง หรือกำหนด `PLAYWRIGHT_CHANNEL`
 
 `npm run build` สร้าง production build และ `npm start` ใช้เปิด build นั้น
 
@@ -299,7 +312,9 @@ ALTER TABLE "Booking"
 
 ## 8. Checklist ตามเกณฑ์ของอาจารย์
 
-ส่วนที่ทำเสร็จแล้วในงานของ Gun (Frontend UI & Room Management) แต่ละไฟล์มีคอมเมนต์ด้านบนอธิบายเหตุผลของ Server/Client
+งานของทั้งสามคน merge เข้า `main` แล้ว แต่ละไฟล์มีคอมเมนต์ด้านบนอธิบายเหตุผลของ Server/Client รายละเอียดรายคนอยู่ที่ `docs/folk-scope.md`, `docs/gun-scope.md` และ `docs/jeff-scope.md`
+
+### Gun — Frontend UI & Room Management
 
 - [x] **1. Next.js App Router อย่างน้อย 4 route** — Gun ทำเสร็จ 5 route: `/`, `/rooms`, `/rooms/[id]`, `/profile`, `/admin/rooms` (พร้อม `loading.tsx`, `error.tsx`, `not-found.tsx`)
 - [x] **2. มีทั้ง Server และ Client Component พร้อมเหตุผล**
@@ -308,5 +323,48 @@ ALTER TABLE "Booking"
 - [x] **3. Data fetching ด้วย SSR โดยเจตนา** — `/rooms` และ `/rooms/[id]` ใช้ `export const dynamic = "force-dynamic"` เพราะผลลัพธ์ขึ้นกับ `searchParams` (วัน เวลา ความจุ อุปกรณ์) และการจองที่เปลี่ยนตลอดเวลา ถ้า cache แบบ SSG/ISR อาจแสดงห้องที่ถูกจองไปแล้วว่าเป็นห้องว่าง ส่วนหน้าแรกไม่มีข้อมูลจาก DB
   - หมายเหตุ: `app/layout.tsx` อ่านคุกกี้ session ทุก request ทำให้ทุก route render ตอน request ไม่ใช่ตอน build
 - [x] **4. Mutation ผ่าน Server Action** — `actions/rooms.ts` (`createRoom`, `updateRoom`, `deleteRoom`, `createEquipment`, `deleteEquipment`) และ `actions/profile.ts` (`updateProfile`) ตรวจ session, ตรวจ role ใน serializable transaction และ validate ด้วย Zod ซ้ำบน server
-- [x] **5. Global state ฝั่ง client** — `context/AuthContext.tsx` (React Context ตามหัวข้อ 5 ของ proposal) layout ฝั่ง server อ่าน session แล้วส่งให้ `AuthProvider` `Navigation` เรียก `useAuth()` โดยไม่ต้องส่ง props ค่านี้ใช้แสดงผลเท่านั้น Server Action ตรวจสิทธิ์จริงบน server เสมอ (ดู `docs/room-integration.md` สำหรับจุดเชื่อมกับ session ของ Folk)
+- [x] **5. Global state ฝั่ง client** — `context/AuthContext.tsx` (React Context ตามหัวข้อ 5 ของ proposal) layout ฝั่ง server อ่าน session แล้วส่งให้ `AuthProvider` ส่วน `Navigation`, `BookingForm`, `AdminBookingsManager` และ `CalendarView` เรียก `useAuth()` โดยไม่ต้องส่ง props ค่านี้ใช้แสดงผลเท่านั้น Server Action ตรวจสิทธิ์จริงบน server เสมอ (ดู `docs/room-integration.md` สำหรับจุดเชื่อมกับ session ของ Folk)
 - [x] **6. ฟอร์มที่ validate จริง (react-hook-form + zod)** — `profile-form.tsx` กับ `schemas/profile.ts`, `room-form.tsx` กับ `schemas/room.ts` ใช้ `zodResolver` แสดง error รายช่อง และ schema ชุดเดียวกันถูกใช้ตรวจซ้ำใน Server Action
+
+### Folk — Database, Auth & Core Logic
+
+- [x] **1. Next.js App Router อย่างน้อย 4 route** — `/register`, `/login`, `/admin/users`, `/admin/reports` และ Route Handler `GET /api/bookings`
+- [x] **2. มีทั้ง Server และ Client Component พร้อมเหตุผล**
+  - Server Component: `app/login/page.tsx`, `app/register/page.tsx` (ผู้ที่เข้าสู่ระบบแล้วถูก redirect ก่อนส่ง HTML), `app/admin/users/page.tsx`, `app/admin/reports/page.tsx` (`requireAdmin()` ทำงานก่อนอ่านข้อมูล รายงานไม่ต้องใช้ JS ฝั่ง client เพราะช่วงวันที่เป็นฟอร์ม GET)
+  - Client Component: `auth-forms.tsx` (`LoginForm`, `RegisterForm` ต้องใช้ state ของฟอร์ม), `user-role-control.tsx` (ยืนยันและแสดงสถานะกำลังบันทึก), `context/AuthContext.tsx`
+- [x] **3. Data fetching ด้วย SSR โดยเจตนา** — ทุกหน้าใช้ `export const dynamic = "force-dynamic"` เพราะผลลัพธ์ขึ้นกับ session และข้อมูลล่าสุด `GET /api/bookings` ตอบ `Cache-Control: no-store` และจำกัดข้อมูลตามสิทธิ์ใน `lib/booking-visibility.ts`
+- [x] **4. Mutation ผ่าน Server Action** — `actions/auth.ts` (`registerUser`, `loginUser`, `logoutUser`) เก็บรหัสผ่านด้วย bcrypt, บัญชีใหม่เป็น `USER` เสมอ, จำกัดการ login ผิด 5 ครั้งต่อ 15 นาที และ `actions/users.ts` (`updateUserRole`) ตรวจสิทธิ์ Admin จาก session ทุกครั้งและห้ามเปลี่ยนสิทธิ์ของตนเอง
+- [x] **5. Global state ฝั่ง client** — `context/AuthContext.tsx` รับค่าเริ่มต้นจาก `getSessionUser()` ใน `app/layout.tsx` session เป็น JWT (HS256) ใน cookie HttpOnly อายุ 7 วัน โดยอ่านชื่อ อีเมล และ role จากฐานข้อมูลใหม่ทุก request
+- [x] **6. ฟอร์มที่ validate จริง (react-hook-form + zod)** — `auth-forms.tsx` กับ `schemas/auth.ts` (`loginSchema`, `registerSchema`) ใช้ `zodResolver` และ schema ชุดเดียวกันตรวจซ้ำใน Server Action
+- [x] **งานฐานข้อมูลและ deploy** — `prisma/migrations/20261010000000_init/migration.sql` (ตาราง, CHECK constraint และ exclusion constraint `no_overlapping_bookings`), `scripts/seed-database.mjs`, guard `requireUser` / `requireAdmin` / `getAdminOrNull`, เงื่อนไขการจองกลางใน `lib/booking-rules.ts` และ `docs/deploy.md`
+
+### Jeff — Booking Workflow, Calendar & Email Notifications
+
+- [x] **1. Next.js App Router อย่างน้อย 4 route** — `/rooms/[id]/book`, `/calendar`, `/my-bookings`, `/admin/bookings`
+- [x] **2. มีทั้ง Server และ Client Component พร้อมเหตุผล**
+  - Server Component: `app/rooms/[id]/book/page.tsx`, `app/calendar/page.tsx`, `app/my-bookings/page.tsx`, `app/admin/bookings/page.tsx` ตรวจ session และสิทธิ์บน server ก่อนอ่านข้อมูล ผู้ใช้เห็นเฉพาะรายการของตน
+  - Client Component: `booking-form.tsx` (react-hook-form), `calendar-view.tsx` (FullCalendar ต้องโต้ตอบกับผู้ใช้), `my-bookings-manager.tsx` และ `admin-bookings-manager.tsx` (หน้าต่างยืนยัน แก้ไข ยกเลิก อนุมัติ ปฏิเสธ และสถานะผลลัพธ์)
+- [x] **3. Data fetching ด้วย SSR โดยเจตนา** — ทุกหน้าใช้ `force-dynamic` เพราะสถานะการจองเปลี่ยนตลอดเวลา ปฏิทินเรียก `GET /api/bookings?start=&end=&roomId=` ใหม่ทุกครั้งที่เปลี่ยนช่วงวันที่หรือเปลี่ยนห้อง จึงไม่โหลดการจองทั้งระบบมาในครั้งเดียว และไม่ใช้ข้อมูลที่ cache ไว้
+- [x] **4. Mutation ผ่าน Server Action** — `actions/bookings.ts` (`createBooking`, `updateBooking`, `cancelBooking`, `reviewBooking`) ตรวจ session, เจ้าของรายการ, เงื่อนไขเวลา ความจุ และการจองซ้อน โดยมี exclusion constraint เป็นด่านสุดท้าย `reviewBooking` ส่งอีเมลผ่าน `lib/email/mailer.ts` (Nodemailer / SMTP) หลังบันทึกสำเร็จ ถ้าไม่ตั้งค่า `SMTP_*` จะ log แทนการส่งจริง
+- [x] **5. Global state ฝั่ง client** — `BookingForm` แสดงข้อมูลผู้ขอจอง, `AdminBookingsManager` แสดงปุ่มอนุมัติ/ปฏิเสธ และ `CalendarView` เลือกมุมมอง Admin จาก `useAuth()` โดยไม่ต้องส่ง props ค่านี้ใช้แสดงผลเท่านั้น
+- [x] **6. ฟอร์มที่ validate จริง (react-hook-form + zod)** — `booking-form.tsx` กับ `schemas/booking.ts` ใช้ `zodResolver` และ `bookingSchema` ชุดเดียวกันตรวจซ้ำใน `createBooking` / `updateBooking` (หน้าต่างแก้ไขใน `/my-bookings` ตรวจด้วย schema เดียวกันบน server)
+
+## 9. สถานะงานและข้อจำกัดที่ทราบ
+
+ตรวจล่าสุดเมื่อ 10 ตุลาคม 2026: `npm run lint`, `npm run typecheck`, `npm run db:validate`, `npm test` (55 รายการ), `npm run build` และ `npm run test:e2e` (19 รายการ) ผ่านทั้งหมด
+
+แก้ไขหลังตรวจเทียบ proposal:
+
+- `/admin/bookings` ใช้ `requireAdmin()` เหมือนหน้า Admin อื่น เดิมผู้ใช้ทั่วไปที่เข้าสู่ระบบแล้วจะถูกส่งไป `/login?next=/admin/bookings` แล้วเด้งกลับมาวนไม่สิ้นสุด ตอนนี้ถูกส่งไปหน้าแรก
+- `/calendar` ดึงข้อมูลจาก `GET /api/bookings` ตามช่วงวันที่และห้องที่เลือกตามหัวข้อ 4 จึงต้องเข้าสู่ระบบก่อน (ผู้ที่ยังไม่เข้าสู่ระบบถูกส่งไป `/login?next=/calendar`) ผู้ใช้ทั่วไปเห็นหัวข้อเฉพาะรายการของตน รายการของผู้อื่นแสดงเป็น "จองแล้ว"
+- ปฏิทินแสดงเวลาเป็นเวลาไทยถูกต้องแล้ว FullCalendar ไม่มี time zone plugin จึงอ่านเฉพาะเวลาตามตัวอักษรและไม่สนใจ offset เดิมรายการ 09:00 น. จึงไปแสดงที่ 02:00 น. ตอนนี้แปลงเวลาใน `src/lib/calendar-time.ts` ทั้งข้อมูลรายการ ช่วงวันที่ที่ส่งให้ API และเส้นเวลาปัจจุบัน
+- `useAuth()` ถูกใช้ใน Navbar, ฟอร์มจองห้อง, ปุ่มอนุมัติ/ปฏิเสธ และปฏิทิน ตามหัวข้อ 5
+
+ข้อจำกัดที่ยังไม่ได้แก้:
+
+- ช่อง "รายละเอียด" (`description`) ในฟอร์มจองถูกตรวจรูปแบบแต่ไม่ถูกบันทึก เพราะตาราง `Booking` ไม่มี column นี้ ต้องเพิ่ม migration ใหม่หรือเอาช่องออก
+- `createBooking` และ `updateBooking` ตรวจการจองซ้อนแล้วเขียนข้อมูลโดยไม่ได้ครอบด้วย transaction ตามหัวข้อ 4 กรณีส่งคำขอพร้อมกันยังกันได้ด้วย exclusion constraint `no_overlapping_bookings` ซึ่งถูกแปลงเป็นข้อความแจ้งเตือนเดียวกัน
+- `updateBooking` และ `cancelBooking` ยอมให้ Admin แก้ไขหรือยกเลิกรายการของผู้อื่นได้ ขณะที่หัวข้อ 4 ระบุเฉพาะเจ้าของรายการ ทีมต้องตกลงว่าจะคงไว้หรือจำกัด
+- อีเมลแจ้งผลยังไม่ escape HTML ของหัวข้อประชุม ชื่อผู้จอง และหมายเหตุผู้ดูแล
+- End-to-end test ยังไม่ครอบคลุมขั้นตอน สร้าง แก้ไข ยกเลิก และอนุมัติคำขอจองผ่านหน้าจอ มีเฉพาะ unit test ของ schema, เงื่อนไขการจอง, constraint และอีเมล
+- Session เป็น JWT แบบ stateless จึงเพิกถอน token ที่ถูกคัดลอกก่อนหมดอายุไม่ได้ และตัวจำกัดการ login เก็บในหน่วยความจำของแต่ละ instance (ดู `docs/deploy.md`)
