@@ -349,22 +349,143 @@ ALTER TABLE "Booking"
 - [x] **5. Global state ฝั่ง client** — `BookingForm` แสดงข้อมูลผู้ขอจอง, `AdminBookingsManager` แสดงปุ่มอนุมัติ/ปฏิเสธ และ `CalendarView` เลือกมุมมอง Admin จาก `useAuth()` โดยไม่ต้องส่ง props ค่านี้ใช้แสดงผลเท่านั้น
 - [x] **6. ฟอร์มที่ validate จริง (react-hook-form + zod)** — `booking-form.tsx` กับ `schemas/booking.ts` ใช้ `zodResolver` และ `bookingSchema` ชุดเดียวกันตรวจซ้ำใน `createBooking` / `updateBooking` (หน้าต่างแก้ไขใน `/my-bookings` ตรวจด้วย schema เดียวกันบน server)
 
-## 9. สถานะงานและข้อจำกัดที่ทราบ
+## 9. Checklist เกณฑ์ 1–7 พร้อมไฟล์อ้างอิง
 
-ตรวจล่าสุดเมื่อ 10 ตุลาคม 2026: `npm run lint`, `npm run typecheck`, `npm run db:validate`, `npm test` (55 รายการ), `npm run build` และ `npm run test:e2e` (19 รายการ) ผ่านทั้งหมด
+ทุก path นับจาก root ของ repository ใช้เปิดไฟล์ประกอบตอนนำเสนอได้ทันที
 
-แก้ไขหลังตรวจเทียบ proposal:
+### 1. App Router อย่างน้อย 4 route — ผ่าน
 
-- `/admin/bookings` ใช้ `requireAdmin()` เหมือนหน้า Admin อื่น เดิมผู้ใช้ทั่วไปที่เข้าสู่ระบบแล้วจะถูกส่งไป `/login?next=/admin/bookings` แล้วเด้งกลับมาวนไม่สิ้นสุด ตอนนี้ถูกส่งไปหน้าแรก
-- `/calendar` ดึงข้อมูลจาก `GET /api/bookings` ตามช่วงวันที่และห้องที่เลือกตามหัวข้อ 4 จึงต้องเข้าสู่ระบบก่อน (ผู้ที่ยังไม่เข้าสู่ระบบถูกส่งไป `/login?next=/calendar`) ผู้ใช้ทั่วไปเห็นหัวข้อเฉพาะรายการของตน รายการของผู้อื่นแสดงเป็น "จองแล้ว"
-- ปฏิทินแสดงเวลาเป็นเวลาไทยถูกต้องแล้ว FullCalendar ไม่มี time zone plugin จึงอ่านเฉพาะเวลาตามตัวอักษรและไม่สนใจ offset เดิมรายการ 09:00 น. จึงไปแสดงที่ 02:00 น. ตอนนี้แปลงเวลาใน `src/lib/calendar-time.ts` ทั้งข้อมูลรายการ ช่วงวันที่ที่ส่งให้ API และเส้นเวลาปัจจุบัน
-- `useAuth()` ถูกใช้ใน Navbar, ฟอร์มจองห้อง, ปุ่มอนุมัติ/ปฏิเสธ และปฏิทิน ตามหัวข้อ 5
+มี 13 page route แต่ละ route คือไฟล์ `page.tsx` ในโฟลเดอร์ `src/app/`
 
-ข้อจำกัดที่ยังไม่ได้แก้:
+| Route | ไฟล์ | ผู้ทำ |
+| --- | --- | --- |
+| `/` | `src/app/page.tsx` | Gun |
+| `/register` | `src/app/register/page.tsx` | Folk |
+| `/login` | `src/app/login/page.tsx` | Folk |
+| `/profile` | `src/app/profile/page.tsx` | Gun |
+| `/rooms` | `src/app/rooms/page.tsx` | Gun |
+| `/rooms/[id]` | `src/app/rooms/[id]/page.tsx` | Gun |
+| `/rooms/[id]/book` | `src/app/rooms/[id]/book/page.tsx` | Jeff |
+| `/calendar` | `src/app/calendar/page.tsx` | Jeff |
+| `/my-bookings` | `src/app/my-bookings/page.tsx` | Jeff |
+| `/admin/bookings` | `src/app/admin/bookings/page.tsx` | Jeff |
+| `/admin/rooms` | `src/app/admin/rooms/page.tsx` | Gun |
+| `/admin/users` | `src/app/admin/users/page.tsx` | Folk |
+| `/admin/reports` | `src/app/admin/reports/page.tsx` | Folk |
 
-- ช่อง "รายละเอียด" (`description`) ในฟอร์มจองถูกตรวจรูปแบบแต่ไม่ถูกบันทึก เพราะตาราง `Booking` ไม่มี column นี้ ต้องเพิ่ม migration ใหม่หรือเอาช่องออก
-- `createBooking` และ `updateBooking` ตรวจการจองซ้อนแล้วเขียนข้อมูลโดยไม่ได้ครอบด้วย transaction ตามหัวข้อ 4 กรณีส่งคำขอพร้อมกันยังกันได้ด้วย exclusion constraint `no_overlapping_bookings` ซึ่งถูกแปลงเป็นข้อความแจ้งเตือนเดียวกัน
-- `updateBooking` และ `cancelBooking` ยอมให้ Admin แก้ไขหรือยกเลิกรายการของผู้อื่นได้ ขณะที่หัวข้อ 4 ระบุเฉพาะเจ้าของรายการ ทีมต้องตกลงว่าจะคงไว้หรือจำกัด
-- อีเมลแจ้งผลยังไม่ escape HTML ของหัวข้อประชุม ชื่อผู้จอง และหมายเหตุผู้ดูแล
-- End-to-end test ยังไม่ครอบคลุมขั้นตอน สร้าง แก้ไข ยกเลิก และอนุมัติคำขอจองผ่านหน้าจอ มีเฉพาะ unit test ของ schema, เงื่อนไขการจอง, constraint และอีเมล
-- Session เป็น JWT แบบ stateless จึงเพิกถอน token ที่ถูกคัดลอกก่อนหมดอายุไม่ได้ และตัวจำกัดการ login เก็บในหน่วยความจำของแต่ละ instance (ดู `docs/deploy.md`)
+ไฟล์พิเศษของ App Router:
+
+- Layout หลัก: `src/app/layout.tsx`
+- กำลังโหลด: `src/app/loading.tsx`, `src/app/rooms/loading.tsx`
+- ข้อผิดพลาด: `src/app/error.tsx`, `src/app/rooms/error.tsx`, `src/app/profile/error.tsx`, `src/app/admin/rooms/error.tsx`
+- ไม่พบข้อมูล: `src/app/not-found.tsx`, `src/app/rooms/[id]/not-found.tsx`
+- Route Handler: `src/app/api/bookings/route.ts`
+
+### 2. Server + Client Component พร้อมเหตุผล — ผ่าน (มีไฟล์ที่ยังไม่มีคอมเมนต์)
+
+**Server Component** — อ่านฐานข้อมูลและตรวจสิทธิ์บน server จึงไม่ส่งโค้ดเชื่อมฐานข้อมูลไปที่เบราว์เซอร์
+
+- `src/app/layout.tsx` — อ่าน session แล้วส่งให้ `AuthProvider`
+- `page.tsx` ทั้ง 13 ไฟล์ในข้อ 1
+- `src/components/room-card.tsx`, `src/components/ui.tsx`, `src/components/ui/badge.tsx`, `src/components/ui/brand.tsx` — แสดงผลอย่างเดียว ไม่มี state
+
+**Client Component** (ขึ้นต้นด้วย `"use client"`) — ต้องใช้ state, event หรือ API ของเบราว์เซอร์
+
+| ไฟล์ | เหตุผลที่เป็น Client |
+| --- | --- |
+| `src/components/auth-forms.tsx` | ฟอร์มเข้าสู่ระบบและสมัครสมาชิก (react-hook-form) |
+| `src/components/profile-form.tsx` | ฟอร์มแก้ไขโปรไฟล์ |
+| `src/components/room-form.tsx` | ฟอร์มเพิ่มและแก้ไขห้อง |
+| `src/components/booking-form.tsx` | ฟอร์มจองห้อง |
+| `src/components/room-filters.tsx` | ตัวกรองค้นหาห้อง ปรับ URL เมื่อกดค้นหา |
+| `src/components/calendar-view.tsx` | FullCalendar โต้ตอบกับผู้ใช้และเรียก API |
+| `src/components/my-bookings-manager.tsx` | หน้าต่างแก้ไข ยกเลิก และดาวน์โหลดใบยืนยัน |
+| `src/components/admin-bookings-manager.tsx` | หน้าต่างอนุมัติและปฏิเสธ |
+| `src/components/user-role-control.tsx` | ตัวเลือกเปลี่ยนสิทธิ์ผู้ใช้ |
+| `src/components/delete-room-button.tsx`, `src/components/equipment-manager.tsx` | ขั้นตอนยืนยันและสถานะกำลังบันทึก |
+| `src/components/room-image.tsx` | แสดงรูปสำรองเมื่อโหลดรูปไม่ได้ |
+| `src/components/navigation.tsx` | เมนูมือถือเปิด–ปิด และไฮไลต์เมนูปัจจุบัน |
+| `src/components/home-experience.tsx` | หน้าแรกแบบโต้ตอบ มี state และแอนิเมชัน (GSAP) |
+| `src/components/layout/footer.tsx`, `src/components/ui/route-motion.tsx` | อ่าน path ปัจจุบันด้วย `usePathname()` |
+| `src/components/ui/dialog.tsx`, `src/components/ui/preloader.tsx` | กล่องโต้ตอบและหน้าจอโหลดที่ใช้ state และ effect |
+| `src/context/AuthContext.tsx`, `src/context/toast-context.tsx` | React Context ทำงานได้เฉพาะฝั่ง client |
+| `src/app/error.tsx` และ `error.tsx` อื่น ๆ | Error boundary ต้องเป็น Client Component |
+
+**คำอธิบายอยู่ที่ไหน**
+
+- คอมเมนต์หัวไฟล์: `page.tsx` ทุกหน้ายกเว้นหน้าแรก และ Client Component หลักทั้งหมด
+- `Readme.md` หัวข้อ 3 (ตารางเหตุผล Server / Client) และหัวข้อ 8 (รายไฟล์ของแต่ละคน)
+
+**ไฟล์ที่ยังไม่มีคอมเมนต์อธิบายในตัวไฟล์** (อธิบายไว้ใน `Readme.md` แล้ว): `src/app/page.tsx`, `src/components/navigation.tsx`, `src/components/home-experience.tsx`, `src/context/toast-context.tsx`, `src/components/layout/footer.tsx`, `src/components/room-card.tsx`, `src/components/ui.tsx`, `src/components/ui/badge.tsx`, `src/components/ui/brand.tsx`, `src/components/ui/dialog.tsx`, `src/components/ui/preloader.tsx`, `src/components/ui/route-motion.tsx`
+
+### 3. Data fetching แบบเจตนา — ผ่าน
+
+ใช้ SSR ด้วย `export const dynamic = "force-dynamic"` ไม่มี SSG / ISR เพราะข้อมูลการจองเปลี่ยนตลอดเวลา
+
+| ไฟล์ | เหตุผล (เขียนไว้ที่คอมเมนต์หัวไฟล์) |
+| --- | --- |
+| `src/app/rooms/page.tsx` | ผลลัพธ์ขึ้นกับ `searchParams` และการจองล่าสุด ถ้า cache จะแสดงห้องที่ถูกจองแล้วว่าว่าง |
+| `src/app/rooms/[id]/page.tsx` | ตารางจองของวันที่เลือกเปลี่ยนทุกครั้งที่มีคนจอง |
+| `src/app/rooms/[id]/book/page.tsx`, `src/app/calendar/page.tsx`, `src/app/my-bookings/page.tsx` | ขึ้นกับ session และสถานะการจองล่าสุด |
+| `src/app/admin/bookings/page.tsx`, `src/app/admin/users/page.tsx`, `src/app/admin/reports/page.tsx` | ตรวจสิทธิ์ Admin และคำนวณจากข้อมูลล่าสุดทุก request |
+| `src/app/login/page.tsx`, `src/app/register/page.tsx` | ตรวจ session เพื่อ redirect ผู้ที่เข้าสู่ระบบแล้ว |
+| `src/app/api/bookings/route.ts` | ตอบ `Cache-Control: no-store` ให้ปฏิทินได้ข้อมูลล่าสุดเสมอ |
+
+ส่วนที่อ่านข้อมูล: `src/lib/rooms.ts` (ค้นหาห้องและตารางจอง), `src/lib/room-filters.ts` (แปลงตัวกรองจาก URL), `src/lib/bookings.ts` (รายการจอง), `src/lib/reports.ts` (รายงาน)
+
+### 4. Mutation ผ่าน Server Action / Route Handler — ผ่าน
+
+Server Action 14 ตัวในโฟลเดอร์ `src/actions/` ทุกตัวตรวจ session และ validate ด้วย Zod ซ้ำบน server
+
+| ไฟล์ | ฟังก์ชัน | เรียกจาก |
+| --- | --- | --- |
+| `src/actions/auth.ts` | `registerUser`, `loginUser`, `logoutUser` | `src/components/auth-forms.tsx`, `src/app/profile/page.tsx` |
+| `src/actions/bookings.ts` | `createBooking`, `updateBooking`, `cancelBooking`, `reviewBooking` | `src/components/booking-form.tsx`, `src/components/my-bookings-manager.tsx`, `src/components/admin-bookings-manager.tsx` |
+| `src/actions/rooms.ts` | `createRoom`, `updateRoom`, `deleteRoom`, `createEquipment`, `deleteEquipment` | `src/components/room-form.tsx`, `src/components/delete-room-button.tsx`, `src/components/equipment-manager.tsx` |
+| `src/actions/profile.ts` | `updateProfile` | `src/components/profile-form.tsx` |
+| `src/actions/users.ts` | `updateUserRole` | `src/components/user-role-control.tsx` |
+
+ไฟล์ที่เกี่ยวข้อง:
+
+- กฎการจองและการกันจองซ้อน: `src/lib/booking-rules.ts`, `prisma/migrations/20261010000000_init/migration.sql`
+- การจัดการห้องใน transaction: `src/lib/room-management.ts`
+- อีเมลแจ้งผล: `src/lib/email/mailer.ts`
+- Route Handler `GET /api/bookings` (อ่านอย่างเดียว ปฏิทินใช้): `src/app/api/bookings/route.ts`, `src/lib/booking-visibility.ts`
+
+### 5. Global state ฝั่ง client — ผ่าน
+
+| ไฟล์ | หน้าที่ |
+| --- | --- |
+| `src/context/AuthContext.tsx` | สร้าง Context, `AuthProvider` และ hook `useAuth()` |
+| `src/app/layout.tsx` | อ่าน session บน server แล้วส่งค่าเริ่มต้นให้ `AuthProvider` ครอบทั้งแอป |
+| `src/components/navigation.tsx` | ใช้ `useAuth()` แสดงชื่อผู้ใช้และเมนู Admin |
+| `src/components/booking-form.tsx` | ใช้ `useAuth()` แสดงข้อมูลผู้ขอจอง |
+| `src/components/admin-bookings-manager.tsx` | ใช้ `useAuth()` แสดงปุ่มอนุมัติ / ปฏิเสธ |
+| `src/components/calendar-view.tsx` | ใช้ `useAuth()` เลือกมุมมอง Admin |
+| `src/context/toast-context.tsx` | Context ตัวที่สอง สำหรับข้อความแจ้งเตือน |
+
+### 6. ฟอร์ม react-hook-form + zod — ผ่าน
+
+| ฟอร์ม | ไฟล์ฟอร์ม | Zod schema | ตรวจซ้ำบน server ใน |
+| --- | --- | --- | --- |
+| เข้าสู่ระบบ | `src/components/auth-forms.tsx` | `src/schemas/auth.ts` (`loginSchema`) | `src/actions/auth.ts` |
+| สมัครสมาชิก | `src/components/auth-forms.tsx` | `src/schemas/auth.ts` (`registerSchema`) | `src/actions/auth.ts` |
+| โปรไฟล์ | `src/components/profile-form.tsx` | `src/schemas/profile.ts` | `src/actions/profile.ts` |
+| ข้อมูลห้อง | `src/components/room-form.tsx` | `src/schemas/room.ts` | `src/actions/rooms.ts` |
+| จองห้อง | `src/components/booking-form.tsx` | `src/schemas/booking.ts` (`bookingSchema`) | `src/actions/bookings.ts` |
+
+- ทุกฟอร์มใช้ `zodResolver` และแสดงข้อผิดพลาดรายช่อง
+- หน้าต่างแก้ไขใน `/my-bookings` (`src/components/my-bookings-manager.tsx`) ไม่ใช้ react-hook-form ตรวจด้วย `bookingSchema` บน server อย่างเดียว
+
+### 7. Responsive — ผ่าน
+
+| ไฟล์ | สิ่งที่ทำ |
+| --- | --- |
+| `src/app/globals.css` | `@media` ที่ 560, 720, 850, 1100 และ 1500 px ปรับ layout การ์ด ตาราง และเมนู |
+| `src/components/navigation.tsx` | เมนูมือถือแบบปุ่มเปิด–ปิด ปิดเองเมื่อกด Escape หรือคลิกนอกเมนู |
+| `src/components/booking-form.tsx`, `src/components/calendar-view.tsx`, `src/components/my-bookings-manager.tsx`, `src/components/admin-bookings-manager.tsx` | Tailwind `sm:` / `md:` / `lg:` ปรับการจัดวางตามขนาดจอ |
+| `tests/e2e/rooms.spec.ts` | ทดสอบอัตโนมัติที่ความกว้าง 375, 768, 1024 และ 1440 px ว่าไม่มีการเลื่อนแนวนอน |
+
+### ผลตรวจล่าสุด
+
+`npm run lint`, `npm run typecheck`, `npm test` (55 รายการ), `npm run build` และ `npm run test:e2e` (19 รายการ) ผ่านทั้งหมด
