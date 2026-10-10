@@ -81,6 +81,40 @@ async function main() {
         department: "กองวิเทศสัมพันธ์",
         role: "USER",
       },
+      // Mock accounts for demo data. They use example.com so that a configured SMTP server can
+      // never deliver a review e-mail to a real mailbox.
+      {
+        id: "usr-6",
+        name: "ธนพล ศรีสุวรรณ",
+        email: "thanaphon.mock@example.com",
+        passwordHash,
+        department: "คณะวิศวกรรมศาสตร์",
+        role: "USER",
+      },
+      {
+        id: "usr-7",
+        name: "ปวีณา อินทรชัย",
+        email: "paweena.mock@example.com",
+        passwordHash,
+        department: "คณะบริหารธุรกิจ",
+        role: "USER",
+      },
+      {
+        id: "usr-8",
+        name: "วรเมธ จันทร์หอม",
+        email: "woramet.mock@example.com",
+        passwordHash,
+        department: "วิทยาลัยนวัตกรรมดิจิทัล (DII)",
+        role: "USER",
+      },
+      {
+        id: "usr-9",
+        name: "ศิริพร แก้วมณี",
+        email: "siriporn.mock@example.com",
+        passwordHash,
+        department: "สำนักหอสมุด",
+        role: "USER",
+      },
       {
         id: "usr-admin",
         name: "ดร. สมชาย ภัทรเดช (Admin)",
@@ -315,6 +349,102 @@ async function main() {
         ]
       );
     }
+
+    // 5. Mock bookings relative to the day the seed runs, so the calendar, "my bookings", the
+    // admin queue and the reports always have past, current and upcoming data to show.
+    // [day offset, room, user, start, end, attendees, status, topic, admin note]
+    // Offsets count working days (weekends are skipped); 0 is today.
+    const mockBookings = [
+      [-12, "room-105", "usr-2", "09:00", "10:00", 5, "APPROVED", "Code Review ประจำสัปดาห์", null],
+      [-10, "room-101", "usr-6", "13:00", "15:00", 16, "APPROVED", "ประชุมความร่วมมือภาคอุตสาหกรรม", null],
+      [-9, "room-103", "usr-4", "09:00", "11:00", 50, "APPROVED", "ปฐมนิเทศผู้ช่วยสอน", "จัดที่นั่งแบบห้องเรียนเรียบร้อยแล้ว"],
+      [-8, "room-102", "usr-3", "14:00", "16:00", 11, "REJECTED", "กิจกรรมชมรมบอร์ดเกม", "ห้องนี้สงวนไว้สำหรับการเรียนการสอนและการประชุมงาน"],
+      [-7, "room-104", "usr-8", "10:00", "12:00", 10, "APPROVED", "ซ้อมนำเสนอโครงงานจบการศึกษา", null],
+      [-6, "room-101", "usr-7", "09:00", "12:00", 22, "APPROVED", "ประชุมแผนงบประมาณประจำไตรมาส", null],
+      [-5, "room-105", "usr-5", "15:00", "16:00", 3, "CANCELLED", "สัมภาษณ์นักศึกษาแลกเปลี่ยน", "ยกเลิกโดยผู้ใช้: ผู้สัมภาษณ์ติดภารกิจ"],
+      [-4, "room-102", "usr-1", "09:30", "11:30", 8, "APPROVED", "UX Review หน้าเว็บจองห้อง", null],
+      [-4, "room-103", "usr-9", "13:00", "16:00", 38, "APPROVED", "สัมมนาการสืบค้นฐานข้อมูลวิจัย", null],
+      [-3, "room-104", "usr-6", "13:30", "16:00", 12, "APPROVED", "Workshop IoT เบื้องต้น", null],
+      [-3, "room-101", "usr-2", "14:00", "16:00", 20, "APPROVED", "ประชุมทบทวนสถาปัตยกรรมระบบ", null],
+      [-2, "room-103", "usr-7", "09:00", "12:00", 45, "APPROVED", "อบรมการใช้ระบบสารบรรณอิเล็กทรอนิกส์", null],
+      [-2, "room-105", "usr-3", "10:00", "11:00", 4, "APPROVED", "ประชุมกลุ่มโครงงาน React", null],
+      [-1, "room-101", "usr-4", "09:00", "11:00", 14, "APPROVED", "ประชุมคณะกรรมการบริหารหลักสูตร", null],
+      [-1, "room-102", "usr-8", "13:00", "15:00", 9, "APPROVED", "Sprint Review ทีมพัฒนาแอปนักศึกษา", null],
+      [0, "room-102", "usr-9", "15:00", "17:00", 6, "APPROVED", "ประชุมทีมบริการสารสนเทศ", null],
+      [0, "room-104", "usr-8", "18:00", "19:30", 12, "PENDING", "ติวสอบกลางภาค Data Structures", null],
+      [1, "room-101", "usr-1", "09:00", "11:00", 15, "APPROVED", "ประชุมเตรียมนำเสนอ Final Project", "อนุมัติ เปิดห้องให้ก่อนเวลา 15 นาที"],
+      [1, "room-102", "usr-3", "13:00", "15:00", 8, "PENDING", "ทดสอบระบบจองห้องร่วมกับผู้ใช้จริง", null],
+      [1, "room-103", "usr-4", "09:00", "12:00", 55, "APPROVED", "บรรยายพิเศษ: AI สำหรับงานบริการนักศึกษา", null],
+      [2, "room-105", "usr-2", "10:00", "11:30", 4, "PENDING", "ประชุมออกแบบฐานข้อมูลรอบสอง", null],
+      [2, "room-101", "usr-7", "13:30", "16:30", 20, "PENDING", "ประชุมคณะกรรมการจัดงาน Open House", null],
+      [2, "room-104", "usr-6", "09:00", "12:00", 14, "APPROVED", "Workshop การเขียน API ด้วย Next.js", null],
+      [3, "room-102", "usr-1", "09:00", "10:30", 6, "PENDING", "Retrospective ทีม Frontend", null],
+      [3, "room-103", "usr-9", "13:00", "16:00", 40, "APPROVED", "อบรมการอ้างอิงและป้องกันการคัดลอกผลงาน", null],
+      [3, "room-105", "usr-3", "14:00", "15:00", 3, "APPROVED", "ซ้อมนำเสนอระบบแจ้งเตือนอีเมล", null],
+      [4, "room-101", "usr-5", "10:00", "12:00", 12, "PENDING", "ต้อนรับคณะผู้แทนมหาวิทยาลัยต่างประเทศ", null],
+      [4, "room-104", "usr-2", "13:00", "15:00", 10, "CANCELLED", "ทดสอบโหลดระบบฐานข้อมูล", "ยกเลิกโดยผู้ใช้: เลื่อนไปสัปดาห์ถัดไป"],
+      [5, "room-102", "usr-8", "13:00", "16:00", 12, "APPROVED", "Hackathon Kickoff ทีมนักศึกษา", null],
+      [5, "room-103", "usr-7", "09:00", "11:00", 30, "REJECTED", "กิจกรรมขายสินค้าชมรม", "ไม่อนุญาตให้ใช้ห้องประชุมเพื่อกิจกรรมเชิงพาณิชย์"],
+      [6, "room-101", "usr-3", "09:00", "10:30", 10, "APPROVED", "ประชุมสรุปผลการทดสอบระบบ", null],
+      [7, "room-105", "usr-1", "09:30", "10:30", 2, "APPROVED", "สัมภาษณ์ผู้ใช้งานระบบจองห้อง", null],
+      [8, "room-104", "usr-4", "10:00", "12:00", 16, "PENDING", "อบรมความปลอดภัยไซเบอร์สำหรับบุคลากร", null],
+      [10, "room-102", "usr-6", "09:00", "12:00", 10, "PENDING", "Design Thinking Workshop", null],
+    ];
+
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const bangkokDate = (date) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" }).format(date);
+    // Noon UTC of the Bangkok calendar day keeps the weekday stable while stepping whole days.
+    const workday = (offset) => {
+      let day = new Date(`${bangkokDate(new Date())}T12:00:00Z`);
+      for (let left = Math.abs(offset); left > 0; ) {
+        day = new Date(day.getTime() + Math.sign(offset) * DAY_MS);
+        if (day.getUTCDay() !== 0 && day.getUTCDay() !== 6) left--;
+      }
+      return day.toISOString().slice(0, 10);
+    };
+
+    console.log("Seeding mock bookings...");
+    let added = 0;
+    let skipped = 0;
+    for (const [index, [offset, roomId, userId, start, end, attendeeCount, status, topic, adminNote]] of mockBookings.entries()) {
+      const date = workday(offset);
+      const startTime = new Date(`${date}T${start}:00+07:00`);
+      const endTime = new Date(`${date}T${end}:00+07:00`);
+      // Requests are normally made a couple of days ahead; never date them in the future.
+      const createdAt = new Date(Math.min(Date.now(), startTime.getTime() - 2 * DAY_MS));
+      const reviewed = status === "APPROVED" || status === "REJECTED";
+      // A fixed id keeps a re-run from moving or duplicating a row. Each row has its own
+      // transaction so it can be skipped when the slot is already held by another booking
+      // (exclusion constraint) without aborting the rest of the seed.
+      await client.query("BEGIN");
+      try {
+        const result = await client.query(
+          `INSERT INTO "Booking" (id, "roomId", "userId", topic, "startTime", "endTime", "attendeeCount", status, "adminNote", "reviewedById", "createdAt", "updatedAt")
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8::"BookingStatus", $9, $10, $11, $11)
+           ON CONFLICT (id) DO NOTHING`,
+          [
+            `mock-${String(index + 1).padStart(3, "0")}`,
+            roomId,
+            userId,
+            topic,
+            startTime.toISOString(),
+            endTime.toISOString(),
+            attendeeCount,
+            status,
+            adminNote,
+            reviewed ? "usr-admin" : null,
+            createdAt.toISOString(),
+          ]
+        );
+        await client.query("COMMIT");
+        added += result.rowCount ?? 0;
+      } catch (error) {
+        await client.query("ROLLBACK");
+        if (error?.code !== "23P01") throw error;
+        skipped++;
+      }
+    }
+    console.log(`Mock bookings: ${added} added, ${skipped} skipped because the slot was already taken.`);
 
     console.log("Seed completed successfully!");
   } finally {

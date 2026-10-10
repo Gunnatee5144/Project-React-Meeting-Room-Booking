@@ -37,6 +37,11 @@ schema later, create a new migration with `npm run db:migrate -- --name <change>
 the init migration once it has been applied anywhere shared.
 
 The seed never resets an existing account's email, password or role, so it is safe to re-run.
+Besides the fixed sample rows it adds mock bookings dated relative to the day it runs (about three
+working weeks back and two ahead), so the calendar, the admin queue and the reports have data to
+show. Those rows have ids `mock-001`…; a re-run never moves them, and a row is skipped when its
+slot is already taken. Mock accounts use `example.com` addresses so review e-mails cannot reach a
+real mailbox.
 Seed passwords:
 
 - local database: `password123` (users) and `adminpass123` (admin) unless the variables are set;
