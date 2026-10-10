@@ -2,16 +2,18 @@
 
 // Client Component: FullCalendar integration for individual room schedules.
 // Features per-room tabs, selected room details banner with quick booking action,
-// privacy-safe event masking for students/general users ("จองแล้ว"),
 // and click-to-view dialogs exclusively for administrators.
+// Events are loaded from GET /api/bookings every time the visible date range or the selected
+// room changes. That Route Handler verifies the session and masks other people's bookings
+// ("จองแล้ว"), so this component only displays what the server already allowed.
 
-import { useState, useMemo, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import type { EventClickArg } from "@fullcalendar/core";
+import type { EventClickArg, EventInput, EventSourceFuncArg } from "@fullcalendar/core";
 import {
   CalendarDays,
   Clock,
@@ -21,10 +23,17 @@ import {
   Lock,
   Shield,
   Layers,
+  User,
 } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/ui/badge";
+import { useAuth } from "@/context/AuthContext";
+import { toApiTimestamp, toBangkokWallClock } from "@/lib/calendar-time";
+import type { BookingApiItem } from "@/lib/booking-visibility";
+
 const emptySubscribe = () => () => {};
+
+class CalendarLoadError extends Error {}
 
 export interface CalendarRoomItem {
   id: string;
@@ -34,63 +43,61 @@ export interface CalendarRoomItem {
   imageUrl?: string | null;
 }
 
-export interface CalendarEventItem {
-  id: string;
-  roomId: string;
-  roomName: string;
-  roomLocation?: string;
-  topic: string;
-  startTime: string; // ISO string
-  endTime: string;   // ISO string
-  status: "PENDING" | "APPROVED";
-  attendeeCount?: number;
-}
-
 interface CalendarViewProps {
   rooms: CalendarRoomItem[];
-  bookings: CalendarEventItem[];
-  serverIsAdmin?: boolean;
 }
 
-export function CalendarView({ rooms, bookings, serverIsAdmin = false }: CalendarViewProps) {
+export function CalendarView({ rooms }: CalendarViewProps) {
   const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
 
-  // Admin status comes only from the verified server session (passed in by the page).
-  const isAdmin = Boolean(serverIsAdmin);
+  // Display only: GET /api/bookings decides on the server what this viewer may see.
+  const isAdmin = useAuth()?.role === "ADMIN";
 
   // Default to the first room in the list
   const [selectedRoomId, setSelectedRoomId] = useState<string>(() => rooms[0]?.id || "");
 
-  const [activeEvent, setActiveEvent] = useState<CalendarEventItem | null>(null);
+  const [activeEvent, setActiveEvent] = useState<BookingApiItem | null>(null);
+  const [visibleCount, setVisibleCount] = useState(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const selectedRoom = useMemo(() => {
     return rooms.find((r) => r.id === selectedRoomId) || rooms[0] || null;
   }, [rooms, selectedRoomId]);
+  const roomId = selectedRoom?.id;
 
-  // Strictly filter bookings for the currently selected room
-  const filteredBookings = useMemo(() => {
-    if (!selectedRoom) return [];
-    return bookings.filter((b) => b.roomId === selectedRoom.id);
-  }, [bookings, selectedRoom]);
-
-  // Mask titles for non-admins to "จองแล้ว"
-  const calendarEvents = useMemo(() => {
-    return filteredBookings.map((b) => ({
-      id: b.id,
-      title: isAdmin ? b.topic : "จองแล้ว",
-      start: b.startTime,
-      end: b.endTime,
-      backgroundColor: b.status === "APPROVED" ? "#16a34a" : "#ca8a04",
-      borderColor: b.status === "APPROVED" ? "#15803d" : "#a16207",
-      textColor: "#ffffff",
-      extendedProps: b,
-    }));
-  }, [filteredBookings, isAdmin]);
+  // FullCalendar calls this for every visible range; a new function identity (another room)
+  // makes it fetch again. Responses are never cached, so the latest statuses are always shown.
+  const loadEvents = useCallback(async (range: EventSourceFuncArg): Promise<EventInput[]> => {
+    if (!roomId) return [];
+    try {
+      const query = new URLSearchParams({ start: toApiTimestamp(range.startStr), end: toApiTimestamp(range.endStr), roomId });
+      const response = await fetch(`/api/bookings?${query}`, { cache: "no-store" });
+      if (response.status === 401) throw new CalendarLoadError("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่เพื่อดูตารางห้อง");
+      if (!response.ok) throw new CalendarLoadError("โหลดตารางการจองไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+      const data = (await response.json()) as { bookings: BookingApiItem[]; truncated: boolean };
+      setVisibleCount(data.bookings.length);
+      setLoadError(data.truncated ? "มีรายการจำนวนมาก แสดงได้เพียงบางส่วน กรุณาเลือกช่วงวันที่สั้นลง" : null);
+      return data.bookings.map((booking) => ({
+        id: booking.id,
+        title: booking.title,
+        start: toBangkokWallClock(booking.start),
+        end: toBangkokWallClock(booking.end),
+        backgroundColor: booking.status === "APPROVED" ? "#16a34a" : "#ca8a04",
+        borderColor: booking.status === "APPROVED" ? "#15803d" : "#a16207",
+        textColor: "#ffffff",
+        extendedProps: booking,
+      }));
+    } catch (error) {
+      setVisibleCount(0);
+      setLoadError(error instanceof CalendarLoadError ? error.message : "โหลดตารางการจองไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่อ");
+      return [];
+    }
+  }, [roomId]);
 
   const handleEventClick = (info: EventClickArg) => {
     // Only administrators can open the detailed modal
     if (!isAdmin) return;
-    const data = info.event.extendedProps as CalendarEventItem;
+    const data = info.event.extendedProps as BookingApiItem;
     setActiveEvent(data);
   };
 
@@ -184,7 +191,7 @@ export function CalendarView({ rooms, bookings, serverIsAdmin = false }: Calenda
               ) : (
                 <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200/80 px-2.5 py-0.5 rounded-full">
                   <Lock className="w-3 h-3" />
-                  มุมมองนักศึกษา (ซ่อนหัวข้อ)
+                  มุมมองผู้ใช้ทั่วไป (ซ่อนหัวข้อของผู้อื่น)
                 </span>
               )}
             </div>
@@ -217,7 +224,7 @@ export function CalendarView({ rooms, bookings, serverIsAdmin = false }: Calenda
             <span className="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block" />
             รอตรวจสอบ
           </span>
-          <span className="text-slate-400 font-medium">({filteredBookings.length} รายการในห้องนี้)</span>
+          <span className="text-slate-400 font-medium">({visibleCount} รายการในช่วงที่แสดง)</span>
         </div>
         {!isAdmin && (
           <div className="text-[11px] text-slate-500 flex items-center gap-1.5 bg-slate-100/70 px-2.5 py-1 rounded-lg border border-slate-200/60">
@@ -226,6 +233,8 @@ export function CalendarView({ rooms, bookings, serverIsAdmin = false }: Calenda
           </div>
         )}
       </div>
+
+      {loadError && <p className="notice error" role="alert">{loadError}</p>}
 
       {/* 4. FullCalendar Dedicated View */}
       <div className="surface-panel rounded-2xl border border-slate-200 bg-white p-4 sm:p-6 shadow-xs overflow-hidden">
@@ -249,7 +258,8 @@ export function CalendarView({ rooms, bookings, serverIsAdmin = false }: Calenda
           slotMaxTime="21:00:00"
           allDaySlot={false}
           nowIndicator={true}
-          events={calendarEvents}
+          now={() => toBangkokWallClock(new Date())}
+          events={loadEvents}
           eventClick={isAdmin ? handleEventClick : undefined}
           eventContent={(eventInfo) => (
             <div className="flex flex-col items-center justify-center text-center w-full h-full p-1.5 overflow-hidden select-none gap-0.5">
@@ -274,7 +284,7 @@ export function CalendarView({ rooms, bookings, serverIsAdmin = false }: Calenda
           <div className="space-y-4 text-sm">
             <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-3">
               <div>
-                <h3 className="font-bold text-slate-900 text-base">{activeEvent.topic}</h3>
+                <h3 className="font-bold text-slate-900 text-base">{activeEvent.title}</h3>
                 <div className="text-xs text-slate-500 flex items-center gap-1 mt-1">
                   <Building2 className="w-3.5 h-3.5" />
                   <span>
@@ -288,12 +298,18 @@ export function CalendarView({ rooms, bookings, serverIsAdmin = false }: Calenda
             <div className="space-y-2 text-xs text-slate-700">
               <div className="flex items-center gap-2">
                 <CalendarDays className="w-4 h-4 text-blue-600 shrink-0" />
-                <span>วันที่: {formatThaiDate(activeEvent.startTime)}</span>
+                <span>วันที่: {formatThaiDate(activeEvent.start)}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-blue-600 shrink-0" />
-                <span>เวลา: {formatThaiTimeRange(activeEvent.startTime, activeEvent.endTime)}</span>
+                <span>เวลา: {formatThaiTimeRange(activeEvent.start, activeEvent.end)}</span>
               </div>
+              {activeEvent.userName ? (
+                <div className="flex items-center gap-2">
+                  <User className="w-4 h-4 text-blue-600 shrink-0" />
+                  <span>ผู้จอง: {activeEvent.userName}{activeEvent.userEmail ? ` (${activeEvent.userEmail})` : ""}</span>
+                </div>
+              ) : null}
               {activeEvent.attendeeCount ? (
                 <div className="flex items-center gap-2">
                   <Users className="w-4 h-4 text-blue-600 shrink-0" />

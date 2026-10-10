@@ -1,22 +1,18 @@
 // Server Component: Admin Bookings Management Page.
-// Checks admin role on the server before rendering and data fetching from Prisma.
+// requireAdmin() runs on the server before any data is read: guests go to /login, signed-in
+// non-admins go home (sending them to /login would bounce straight back here).
 // AdminBookingsManager handles interactive review actions (approve/reject) and email triggers.
 
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { PageHeading } from "@/components/ui";
-import { getRoomViewer } from "@/lib/room-access";
+import { requireAdmin } from "@/lib/auth/guards";
 import { getAdminBookings } from "@/lib/bookings";
 import { AdminBookingsManager, type AdminBookingItem } from "@/components/admin-bookings-manager";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminBookingsPage() {
-  const user = await getRoomViewer();
-
-  if (user?.role !== "ADMIN") {
-    redirect("/login?next=/admin/bookings");
-  }
+  await requireAdmin("/admin/bookings");
 
   const dbBookings = await getAdminBookings();
   const bookings: AdminBookingItem[] = dbBookings.map((b) => ({

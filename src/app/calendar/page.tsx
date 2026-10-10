@@ -1,40 +1,24 @@
-// Server Component: fetches rooms and schedule data from Prisma and passes to CalendarView.
-// FullCalendar is loaded client-side inside CalendarView for rich interactive scheduling.
+// Server Component: requireUser() redirects guests on the server, then only the room list is read
+// here. Bookings are loaded by CalendarView (Client Component) from GET /api/bookings whenever the
+// visible date range or the selected room changes, so the schedule is never served from a cache.
 
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { PageHeading } from "@/components/ui";
-import { getRoomViewer } from "@/lib/room-access";
-import { CalendarView, type CalendarEventItem, type CalendarRoomItem } from "@/components/calendar-view";
-import { getCalendarBookings } from "@/lib/bookings";
+import { requireUser } from "@/lib/auth/guards";
+import { CalendarView, type CalendarRoomItem } from "@/components/calendar-view";
 import { getPrisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 export default async function CalendarPage() {
-  const user = await getRoomViewer();
-  const serverIsAdmin = user?.role === "ADMIN";
+  await requireUser("/calendar");
 
-  const prisma = getPrisma();
-  const dbRooms = await prisma.room.findMany({
+  const rooms: CalendarRoomItem[] = await getPrisma().room.findMany({
     where: { isActive: true },
     select: { id: true, name: true, location: true, capacity: true, imageUrl: true },
     orderBy: { name: "asc" },
   });
-  const rooms: CalendarRoomItem[] = dbRooms;
-
-  const dbBookings = await getCalendarBookings(undefined, serverIsAdmin);
-  const bookings: CalendarEventItem[] = dbBookings.map((b) => ({
-    id: b.id,
-    roomId: b.roomId,
-    roomName: b.room.name,
-    roomLocation: b.room.location,
-    topic: b.topic,
-    startTime: b.startTime.toISOString(),
-    endTime: b.endTime.toISOString(),
-    status: b.status as "PENDING" | "APPROVED",
-    attendeeCount: b.attendeeCount,
-  }));
 
   return (
     <div className="workspace-page mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-8">
@@ -50,7 +34,7 @@ export default async function CalendarPage() {
         </Link>
       </div>
 
-      <CalendarView rooms={rooms} bookings={bookings} serverIsAdmin={serverIsAdmin} />
+      <CalendarView rooms={rooms} />
     </div>
   );
 }

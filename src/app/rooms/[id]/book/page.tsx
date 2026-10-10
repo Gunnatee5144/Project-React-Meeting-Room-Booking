@@ -59,7 +59,7 @@ export default async function BookRoomPage({ params }: BookPageProps) {
         description="กรอกข้อมูลการประชุม ระบบจะตรวจสอบช่วงเวลาและส่งคำขอไปยังผู้ดูแลระบบ"
       />
 
-      <BookingForm room={roomFormatted} currentUser={user} />
+      <BookingForm room={roomFormatted} department={user.department} />
     </div>
   );
 }

@@ -55,31 +55,3 @@ export async function getAdminBookings() {
     orderBy: { createdAt: "desc" },
   });
 }
-
-export async function getCalendarBookings(roomId?: string, isAdmin = false) {
-  const bookings = await getPrisma().booking.findMany({
-    where: {
-      status: { in: ["PENDING", "APPROVED"] },
-      ...(roomId && roomId !== "all" ? { roomId } : {}),
-    },
-    include: {
-      room: {
-        select: {
-          id: true,
-          name: true,
-          location: true,
-        },
-      },
-    },
-    orderBy: { startTime: "asc" },
-  });
-
-  if (!isAdmin) {
-    return bookings.map((b) => ({
-      ...b,
-      topic: "จองแล้ว",
-    }));
-  }
-
-  return bookings;
-}

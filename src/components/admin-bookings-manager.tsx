@@ -3,6 +3,8 @@
 // Client Component: Admin Bookings Review Manager.
 // Allows admin to inspect, approve, or reject pending booking requests with an optional/required admin note.
 // Calls the reviewBooking Server Action which updates database status and sends email notifications.
+// Approve/reject buttons are shown from AuthContext (useAuth) for display only; reviewBooking
+// re-checks the admin role on the server.
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -22,6 +24,7 @@ import {
 import { StatusBadge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
 import { useToast } from "@/context/toast-context";
+import { useAuth } from "@/context/AuthContext";
 import { reviewBooking } from "@/actions/bookings";
 
 export interface AdminBookingItem {
@@ -49,6 +52,7 @@ interface AdminBookingsManagerProps {
 export function AdminBookingsManager({ initialBookings }: AdminBookingsManagerProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const canReview = useAuth()?.role === "ADMIN";
 
   const [activeTab, setActiveTab] = useState<"ALL" | "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED">("PENDING");
   const [searchQuery, setSearchQuery] = useState("");
@@ -206,7 +210,7 @@ export function AdminBookingsManager({ initialBookings }: AdminBookingsManagerPr
                 </div>
 
                 {/* Review action buttons for PENDING requests */}
-                {b.status === "PENDING" && (
+                {b.status === "PENDING" && canReview && (
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       type="button"

@@ -3,6 +3,7 @@
 // Client Component: Booking Form with React Hook Form + Zod.
 // Validates client-side for immediate feedback, then submits to the createBooking Server Action
 // which enforces session identity and re-validates against database state.
+// The requester card reads the signed-in user from AuthContext (useAuth) for display only.
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -14,6 +15,7 @@ import { bookingSchema, type BookingInput } from "@/schemas/booking";
 import { createBooking } from "@/actions/bookings";
 import { FieldError } from "@/components/ui";
 import { useToast } from "@/context/toast-context";
+import { useAuth } from "@/context/AuthContext";
 import type { BookingActionResult } from "@/types/booking-actions";
 
 interface BookingFormProps {
@@ -26,12 +28,8 @@ interface BookingFormProps {
     isActive: boolean;
     equipment?: { id: string; name: string }[];
   };
-  currentUser: {
-    id: string;
-    name: string;
-    email: string;
-    department?: string | null;
-  } | null;
+  /** Not part of AuthContext, so the server page passes it in. */
+  department?: string | null;
 }
 
 const timeOptions = [
@@ -52,7 +50,8 @@ function getTomorrowDateString(): string {
   }).format(tomorrow);
 }
 
-export function BookingForm({ room, currentUser }: BookingFormProps) {
+export function BookingForm({ room, department }: BookingFormProps) {
+  const currentUser = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [result, setResult] = useState<BookingActionResult | null>(null);
@@ -382,7 +381,7 @@ export function BookingForm({ room, currentUser }: BookingFormProps) {
         {currentUser && (
           <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5 space-y-3 text-xs">
             <div className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-              ข้อมูลผู้ขอจอง (จาก Session)
+              ข้อมูลผู้ขอจอง
             </div>
             <div className="font-bold text-slate-900 text-sm">
               {currentUser.name}
@@ -390,9 +389,9 @@ export function BookingForm({ room, currentUser }: BookingFormProps) {
             <div className="text-slate-500">
               {currentUser.email}
             </div>
-            {currentUser.department && (
+            {department && (
               <div className="text-slate-600">
-                หน่วยงาน: {currentUser.department}
+                หน่วยงาน: {department}
               </div>
             )}
           </div>
